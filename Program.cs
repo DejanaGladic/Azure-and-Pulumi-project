@@ -1,42 +1,31 @@
 ﻿// define stack resources
 using Pulumi;
 using Pulumi.AzureNative.Resources;
-using Pulumi.AzureNative.Storage;
-using Pulumi.AzureNative.Storage.Inputs;
-using System.Collections.Generic;
+using System.Threading.Tasks;
 
-return await Pulumi.Deployment.RunAsync(() =>
+class VMWithPrivateIPAddress : Stack
 {
-    // Create an Azure Resource Group
-    var resourceGroup = new ResourceGroup("resourceGroup");
-
-    // Create an Azure resource (Storage Account)
-    var storageAccount = new StorageAccount("sa", new StorageAccountArgs
+    public VMWithPrivateIPAddress()
     {
-        ResourceGroupName = resourceGroup.Name,
-        Sku = new SkuArgs
+        // Create an Azure Resource Group
+        // Class ResourceGroup need Resource name (prop Name...)
+        var resourceGroup = new ResourceGroup("VMResourceGroup", new ResourceGroupArgs
         {
-            Name = SkuName.Standard_LRS
-        },
-        Kind = Kind.StorageV2
-    });
+            ResourceGroupName = "VMResourceGroup",
+            // Location = "WestUS" but location is defined globally 
+        });
 
-    var storageAccountKeys = ListStorageAccountKeys.Invoke(new ListStorageAccountKeysInvokeArgs
-    {
-        ResourceGroupName = resourceGroup.Name,
-        AccountName = storageAccount.Name
-    });
+        // Expose the Resource Group name as an output
+        this.ResourceGroupName = resourceGroup.Name;
+    }
 
-    var primaryStorageKey = storageAccountKeys.Apply(accountKeys =>
-    {
-        var firstKey = accountKeys.Keys[0].Value;
-        return Output.CreateSecret(firstKey);
-    });
+    // Expose an output that contains the Resource Group name
+    // ResourceGroupName can be used inside this class
+    [Output]
+    public Output<string> ResourceGroupName { get; private set; }
+}
 
-    // Export the primary key of the Storage Account
-    // that can not be showed if we do not deploy our services on Azure
-    return new Dictionary<string, object?>
-    {
-        ["primaryStorageKey"] = primaryStorageKey
-    };
-});
+class Program
+{
+    static Task<int> Main(string[] args) => Pulumi.Deployment.RunAsync<VMWithPrivateIPAddress>();
+}

@@ -2,6 +2,7 @@
 name: Azure_Pulumi_project
 description: Create VM with private IP address in Azure with Pulumi
 runtime: dotnet
+main: Azure_Pulumi_project.csproj # define main method; need to be exactly here
 config:
   pulumi:tags:
     value:
