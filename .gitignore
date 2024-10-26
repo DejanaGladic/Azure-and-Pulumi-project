@@ -4,6 +4,8 @@
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
 # node modules can not be pushed to Github because of large files
+node_modules/*
+
 # User-specific files
 *.rsuser
 *.suo
