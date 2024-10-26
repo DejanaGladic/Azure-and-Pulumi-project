@@ -1,0 +1,3 @@
+# config value for stack
+config:
+  azure-native:location: WestU2
