@@ -19,17 +19,24 @@ class VMWithPrivateIPAddress : Stack
         var servicePort = config.Get("servicePort") ?? "80";
         var vmName = config.Get("vmName") ?? "80";
 
-        // Create an Azure Resource Group
+        // Create an Azure Resource Groups
         // ResourceGroup() need name and args fo RG config
         // we can access RG name as resourceGroup.Name
-        var resourceGroup = new ResourceGroup(
+        // resource group for networking
+        var networkResourceGroup = new ResourceGroup(
+            "Network-Resource-Group",
+            new ResourceGroupArgs
+            {
+                Location = region
+            }
+        );
+
+        // resource group for VM and its parts
+        var VMResourceGroup = new ResourceGroup(
             "VM-Resource-Group",
             new ResourceGroupArgs
             {
-                //ResourceGroupName = "VMResourceGroup", mislim da je nepotrebno
-                Location =
-                    region // but location is defined globally too but is recommended to set it for each resource
-                ,
+                Location = region 
             }
         );
 
@@ -39,7 +46,7 @@ class VMWithPrivateIPAddress : Stack
             "VM-Virtual-Network",
             new VirtualNetworkArgs()
             {
-                ResourceGroupName = resourceGroup.Name,
+                ResourceGroupName = networkResourceGroup.Name,
                 Location = region,
                 // contains an array of IP address ranges that can be used by subnets
                 AddressSpace = new NetworkInputs.AddressSpaceArgs
@@ -67,7 +74,7 @@ class VMWithPrivateIPAddress : Stack
             "VM-Public-Ip",
             new()
             {
-                ResourceGroupName = resourceGroup.Name,
+                ResourceGroupName = VMResourceGroup.Name,
                 PublicIPAllocationMethod = IPAllocationMethod.Dynamic
                 /*DnsSettings = new NetworkInputs.PublicIPAddressDnsSettingsArgs
                  {
@@ -79,9 +86,9 @@ class VMWithPrivateIPAddress : Stack
         // Create a NSG (Network Security Group) with a rule
         // Create a security group allowing inbound access over ports 80 (for HTTP) and 22 (for SSH)??
         // ovo je sve demonstrativno za sada jer sve zavisi sta nama treba
-        var securityGroup = new NetworkSecurityGroup("VM-Security-Rule-Group", new()
+        var networkSecurityGroup = new NetworkSecurityGroup("VM-Security-Rule-Group", new()
         {
-            ResourceGroupName = resourceGroup.Name,
+            ResourceGroupName = networkResourceGroup.Name,
             Location = region,
             // beside the default rules, we can define our own rules
             SecurityRules = new[]
@@ -112,12 +119,12 @@ class VMWithPrivateIPAddress : Stack
             "VM-NIC",
             new NetworkInterfaceArgs()
             {
-                ResourceGroupName = resourceGroup.Name,
+                ResourceGroupName = VMResourceGroup.Name,
                 Location = region,
                 // NSG is associated with NIC - but maybe it is better to associate it with subnet?? because NSG on VNiC is hard to manage
                 NetworkSecurityGroup = new NetworkInputs.NetworkSecurityGroupArgs
                 {
-                    Id = securityGroup.Id
+                    Id = networkSecurityGroup.Id
                 },
                 //DisableTcpStateTracking = true, ovo bas ne znam da li nam znaci ili ne
                 //EnableAcceleratedNetworking = true, ovo bas ne znam da li nam znaci ili ne
@@ -150,7 +157,7 @@ class VMWithPrivateIPAddress : Stack
         // Create a VM
         var vm = new VirtualMachine("VM-Azure-Pulumi", new()
         {
-            ResourceGroupName = resourceGroup.Name,
+            ResourceGroupName = VMResourceGroup.Name,
             NetworkProfile = new ComputeInputs.NetworkProfileArgs
             {
                 NetworkInterfaces = new[] {
@@ -167,6 +174,7 @@ class VMWithPrivateIPAddress : Stack
             OsProfile = new ComputeInputs.OSProfileArgs
             {
                 ComputerName = vmName,
+                // da li mi treba admin user ako nemam RDP vec hocu Bastion
                 //AdminUsername = adminUsername,
                 //CustomData = Convert.ToBase64String(Encoding.UTF8.GetBytes(initScript)),
                 LinuxConfiguration = new ComputeInputs.LinuxConfigurationArgs
