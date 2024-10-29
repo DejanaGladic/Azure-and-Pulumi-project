@@ -1,6 +1,9 @@
 # config value for stack
 config:
-  azure-native:location: WestU2
+  azure-native:location: WestEurope
   servicePort: 
     description: The HTTP service port to expose on the VM
     default: "80"
+  vmSize:
+    description: The machine size to use for the VM
+    default: Standard_A1_v2
