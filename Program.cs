@@ -10,6 +10,10 @@ class VMWithPrivateIPAddress : Stack
 {
     public VMWithPrivateIPAddress()
     {
+        // Import the program's configuration settings.
+        var config = new Pulumi.Config();
+        var region = config.Get("azure-native:location") ?? "WestUS";
+
         // Create an Azure Resource Group
         // ResourceGroup() need name and args fo RG config
         // we can access RG name as resourceGroup.Name
@@ -19,7 +23,7 @@ class VMWithPrivateIPAddress : Stack
             {
                 //ResourceGroupName = "VMResourceGroup", mislim da je nepotrebno
                 Location =
-                    "WestUS" // but location is defined globally too but is recommended to set it for each resource
+                    region // but location is defined globally too but is recommended to set it for each resource
                 ,
             }
         );
@@ -31,11 +35,12 @@ class VMWithPrivateIPAddress : Stack
             new VirtualNetworkArgs()
             {
                 ResourceGroupName = resourceGroup.Name,
-                Location = "WestUS",
+                Location = region,
                 // contains an array of IP address ranges that can be used by subnets
                 AddressSpace = new NetworkInputs.AddressSpaceArgs
                 {
                     // use CIDR notation - baseIPaddress/subnetMask
+                    // just private IP addresses within the VNet
                     AddressPrefixes = new[] { "10.0.0.0/16" },
                 },
                 Subnets = new[]
@@ -59,12 +64,43 @@ class VMWithPrivateIPAddress : Stack
             {
                 ResourceGroupName = resourceGroup.Name,
                 PublicIPAllocationMethod = IPAllocationMethod.Dynamic
-               /*DnsSettings = new NetworkInputs.PublicIPAddressDnsSettingsArgs
-                {
-                    DomainNameLabel = domainNameLabel,
-                },*/
+                /*DnsSettings = new NetworkInputs.PublicIPAddressDnsSettingsArgs
+                 {
+                     DomainNameLabel = domainNameLabel,
+                 },*/
             }
         );
+
+        // Create a NSG (Network Security Group) with a rule
+        // Create a security group allowing inbound access over ports 80 (for HTTP) and 22 (for SSH)??
+        // ovo je sve demonstrativno za sada jer sve zavisi sta nama treba
+        var servicePort = config.Get("servicePort") ?? "80";
+        var securityGroup = new NetworkSecurityGroup("VM-Security-Rule-Group", new()
+        {
+            ResourceGroupName = resourceGroup.Name,
+            Location = region,
+            SecurityRules = new[]
+            {
+                new NetworkInputs.SecurityRuleArgs {
+                    Name = $"VM-Security-Rule-1",
+                    Priority = 1000, // The lower the priority number, the higher the priority of the rule; must be unique for every rule; from 100 to 4096
+                    Direction = SecurityRuleDirection.Inbound, // rule is for inbound (incoming) traffic
+                    Access = "Allow", // network traffic is allowed
+                    Protocol = "Tcp", // rule is applied only on Tcp protocols
+                    // opet nam ovo zavisi od cega se stitimo...
+                    SourcePortRange = "*", // * means all source ports
+                    SourceAddressPrefix = "*", // * means all source Ip addresses
+                    DestinationAddressPrefix = "*",
+                    DestinationPortRanges = new[]
+                    {
+                        servicePort,
+                        "22",
+                    } // This Security Rule 1 means that all TCP traffic from all source ports and all source IP addresses 
+                      // are allowed to all destination IP addresses, but only to the ports specified in DestinationPortRanges (e.g., servicePort and 22)
+                }
+            },
+        });
+
 
         // Create VNIC (Virtual Network Interface Card)
         var networkInterface = new NetworkInterface(
@@ -72,7 +108,11 @@ class VMWithPrivateIPAddress : Stack
             new NetworkInterfaceArgs()
             {
                 ResourceGroupName = resourceGroup.Name,
-                Location = "WestUS",
+                Location = region,
+                // NSG is associated with NIC 
+                NetworkSecurityGroup = new NetworkInputs.NetworkSecurityGroupArgs {
+                    Id = securityGroup.Id
+                },
                 //DisableTcpStateTracking = true, ovo bas ne znam da li nam znaci ili ne
                 //EnableAcceleratedNetworking = true, ovo bas ne znam da li nam znaci ili ne
                 IpConfigurations = new[]
@@ -80,11 +120,12 @@ class VMWithPrivateIPAddress : Stack
                     new NetworkInputs.NetworkInterfaceIPConfigurationArgs
                     {
                         Name = "VM-ipconfig1",
+                        // optionally!!!!! - no instance level public IP but public IP assigned to vNIC which is connected to VM (not the same)
                         PublicIPAddress = new NetworkInputs.PublicIPAddressArgs
                         {
                             // dynamically assigned public IP address for access the VM from Internet - needs to be changed
                             Id = publicIp.Id!
-                                
+
                         },
                         Subnet = new NetworkInputs.SubnetArgs
                         {
@@ -95,8 +136,8 @@ class VMWithPrivateIPAddress : Stack
                         // dynamically assigned public IP address for access the VM from the same VNet - for secure communication inside the VNet
                         // choose from subnet range (defined above)
                         PrivateIPAllocationMethod = IPAllocationMethod.Dynamic,
-                    },
-                },
+                    }
+                }
             }
         );
     }
