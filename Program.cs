@@ -79,6 +79,7 @@ class VMWithPrivateIPAddress : Stack
         {
             ResourceGroupName = resourceGroup.Name,
             Location = region,
+            // beside the default rules, we can define our own rules
             SecurityRules = new[]
             {
                 new NetworkInputs.SecurityRuleArgs {
@@ -109,7 +110,7 @@ class VMWithPrivateIPAddress : Stack
             {
                 ResourceGroupName = resourceGroup.Name,
                 Location = region,
-                // NSG is associated with NIC 
+                // NSG is associated with NIC - but maybe it is better to associate it with subnet?? because NSG on VNiC is hard to manage
                 NetworkSecurityGroup = new NetworkInputs.NetworkSecurityGroupArgs {
                     Id = securityGroup.Id
                 },
