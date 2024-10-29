@@ -36,35 +36,7 @@ class VMWithPrivateIPAddress : Stack
             "VM-Resource-Group",
             new ResourceGroupArgs
             {
-                Location = region 
-            }
-        );
-
-        // Create a virtual network - VNet
-        // VirtualNetwork() use VNet name and args
-        var virtualNetwork = new VirtualNetwork(
-            "VM-Virtual-Network",
-            new VirtualNetworkArgs()
-            {
-                ResourceGroupName = networkResourceGroup.Name,
-                Location = region,
-                // contains an array of IP address ranges that can be used by subnets
-                AddressSpace = new NetworkInputs.AddressSpaceArgs
-                {
-                    // use CIDR notation - baseIPaddress/subnetMask
-                    // just private IP addresses within the VNet
-                    AddressPrefixes = new[] { "10.0.0.0/16" },
-                },
-                Subnets = new[]
-                {
-                    // NetworkInputs class has to be specified because we have SubnetArgs() in different classes
-                    new NetworkInputs.SubnetArgs
-                    {
-                        // first subnet has a address range from 10.0.0.0 to 10.0.0.254 (excluded)
-                        AddressPrefix = "10.0.0.0/24",
-                        Name = "VMVirtualNetwork-subnet-1",
-                    },
-                },
+                Location = region
             }
         );
 
@@ -113,6 +85,39 @@ class VMWithPrivateIPAddress : Stack
             },
         });
 
+        // Create a virtual network - VNet
+        // VirtualNetwork() use VNet name and args
+        var virtualNetwork = new VirtualNetwork(
+            "VM-Virtual-Network",
+            new VirtualNetworkArgs()
+            {
+                ResourceGroupName = networkResourceGroup.Name,
+                Location = region,
+                // contains an array of IP address ranges that can be used by subnets
+                AddressSpace = new NetworkInputs.AddressSpaceArgs
+                {
+                    // use CIDR notation - baseIPaddress/subnetMask
+                    // just private IP addresses within the VNet
+                    AddressPrefixes = new[] { "10.0.0.0/16" },
+                },
+                Subnets = new[]
+                {
+                    // NetworkInputs class has to be specified because we have SubnetArgs() in different classes
+                    new NetworkInputs.SubnetArgs
+                    {
+                        Name = "VMVirtualNetwork-subnet-1",
+                        // first subnet has a address range from 10.0.0.0 to 10.0.0.254 (excluded)
+                        AddressPrefix = "10.0.0.0/24", 
+                        // Make an association NSG with Subnet
+                        // Association NSG with NIC has been deleted because NSG on NIC can be hard to manage
+                        NetworkSecurityGroup = new NetworkInputs.NetworkSecurityGroupArgs
+                        {
+                            Id = networkSecurityGroup.Id
+                        }
+                    }
+                }
+            }
+        );
 
         // Create VNIC (Virtual Network Interface Card)
         var networkInterface = new NetworkInterface(
@@ -121,11 +126,6 @@ class VMWithPrivateIPAddress : Stack
             {
                 ResourceGroupName = VMResourceGroup.Name,
                 Location = region,
-                // NSG is associated with NIC - but maybe it is better to associate it with subnet?? because NSG on VNiC is hard to manage
-                NetworkSecurityGroup = new NetworkInputs.NetworkSecurityGroupArgs
-                {
-                    Id = networkSecurityGroup.Id
-                },
                 //DisableTcpStateTracking = true, ovo bas ne znam da li nam znaci ili ne
                 //EnableAcceleratedNetworking = true, ovo bas ne znam da li nam znaci ili ne
                 IpConfigurations = new[]
@@ -182,13 +182,13 @@ class VMWithPrivateIPAddress : Stack
                     DisablePasswordAuthentication = true,
                     Ssh = new ComputeInputs.SshConfigurationArgs
                     {
-                       /* PublicKeys = new[]
-                        {
-                            new ComputeInputs.SshPublicKeyArgs {
-                                KeyData = sshKey.PublicKeyOpenssh,
-                                Path = $"/home/{adminUsername}/.ssh/authorized_keys",
-                            },
-                        },*/
+                        /* PublicKeys = new[]
+                         {
+                             new ComputeInputs.SshPublicKeyArgs {
+                                 KeyData = sshKey.PublicKeyOpenssh,
+                                 Path = $"/home/{adminUsername}/.ssh/authorized_keys",
+                             },
+                         },*/
                     },
                 },
             },
