@@ -15,6 +15,9 @@ class VMWithPrivateIPAddress : Stack
         var config = new Pulumi.Config();
         var region = config.Get("azure-native:location") ?? "WestUS";
         var vmSize = config.Get("vmSize") ?? "Standard_A1_v2";
+        // ??
+        var servicePort = config.Get("servicePort") ?? "80";
+        var vmName = config.Get("vmName") ?? "80";
 
         // Create an Azure Resource Group
         // ResourceGroup() need name and args fo RG config
@@ -76,7 +79,6 @@ class VMWithPrivateIPAddress : Stack
         // Create a NSG (Network Security Group) with a rule
         // Create a security group allowing inbound access over ports 80 (for HTTP) and 22 (for SSH)??
         // ovo je sve demonstrativno za sada jer sve zavisi sta nama treba
-        var servicePort = config.Get("servicePort") ?? "80";
         var securityGroup = new NetworkSecurityGroup("VM-Security-Rule-Group", new()
         {
             ResourceGroupName = resourceGroup.Name,
@@ -146,7 +148,7 @@ class VMWithPrivateIPAddress : Stack
         );
 
         // Create a VM
-       /* var vm = new VirtualMachine("VM-Azure-Pulumi", new()
+        var vm = new VirtualMachine("VM-Azure-Pulumi", new()
         {
             ResourceGroupName = resourceGroup.Name,
             NetworkProfile = new ComputeInputs.NetworkProfileArgs
@@ -154,7 +156,7 @@ class VMWithPrivateIPAddress : Stack
                 NetworkInterfaces = new[] {
                     new ComputeInputs.NetworkInterfaceReferenceArgs {
                         Id = networkInterface.Id,
-                        Primary = true,
+                        Primary = true, //?
                     },
                 },
             },
@@ -162,42 +164,42 @@ class VMWithPrivateIPAddress : Stack
             {
                 VmSize = vmSize,
             },
-            OsProfile = new AzureNative.Compute.Inputs.OSProfileArgs
+            OsProfile = new ComputeInputs.OSProfileArgs
             {
                 ComputerName = vmName,
-                AdminUsername = adminUsername,
-                CustomData = Convert.ToBase64String(Encoding.UTF8.GetBytes(initScript)),
-                LinuxConfiguration = new AzureNative.Compute.Inputs.LinuxConfigurationArgs
+                //AdminUsername = adminUsername,
+                //CustomData = Convert.ToBase64String(Encoding.UTF8.GetBytes(initScript)),
+                LinuxConfiguration = new ComputeInputs.LinuxConfigurationArgs
                 {
                     DisablePasswordAuthentication = true,
-                    Ssh = new AzureNative.Compute.Inputs.SshConfigurationArgs
+                    Ssh = new ComputeInputs.SshConfigurationArgs
                     {
-                        PublicKeys = new[]
+                       /* PublicKeys = new[]
                         {
-                        new AzureNative.Compute.Inputs.SshPublicKeyArgs {
-                            KeyData = sshKey.PublicKeyOpenssh,
-                            Path = $"/home/{adminUsername}/.ssh/authorized_keys",
-                        },
-                    },
+                            new ComputeInputs.SshPublicKeyArgs {
+                                KeyData = sshKey.PublicKeyOpenssh,
+                                Path = $"/home/{adminUsername}/.ssh/authorized_keys",
+                            },
+                        },*/
                     },
                 },
             },
-            StorageProfile = new AzureNative.Compute.Inputs.StorageProfileArgs
+            StorageProfile = new ComputeInputs.StorageProfileArgs
             {
-                OsDisk = new AzureNative.Compute.Inputs.OSDiskArgs
+                OsDisk = new ComputeInputs.OSDiskArgs
                 {
                     Name = $"{vmName}-osdisk",
-                    CreateOption = AzureNative.Compute.DiskCreateOptionTypes.FromImage,
+                    CreateOption = DiskCreateOptionTypes.FromImage,
                 },
-                ImageReference = new AzureNative.Compute.Inputs.ImageReferenceArgs
+                /*ImageReference = new ComputeInputs.ImageReferenceArgs
                 {
                     Publisher = osImagePublisher,
                     Offer = osImageOffer,
                     Sku = osImageSku,
                     Version = osImageVersion,
-                },
+                },*/
             },
-        });*/
+        });
     }
 
     // Expose the Resource Group name as an output and can be used inside code - posle cemo to

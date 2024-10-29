@@ -4,6 +4,9 @@ config:
   servicePort: 
     description: The HTTP service port to expose on the VM
     default: "80"
+  vmName:
+    description: VM name
+    default: VM-Azure-Pulumi
   vmSize:
     description: The machine size to use for the VM
     default: Standard_A1_v2
