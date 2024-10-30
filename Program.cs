@@ -12,12 +12,17 @@ class VMWithPrivateIPAddress : Stack
     public VMWithPrivateIPAddress()
     {
         // Import the program's configuration settings.
-        var config = new Pulumi.Config();
-        var region = config.Get("azure-native:location") ?? "WestUS";
-        var vmSize = config.Get("vmSize") ?? "Standard_A1_v2";
+        // zasto u config ovo izdvajamo npr?
+        var config = new Config();
+        var region = config.Get("azure-native:location");
+        // the most afordable is OS hard disk drive (HDD)
+        var vmSize = config.Get("vmSize")!;
+        var vmName = config.Get("vmName")!;
+        var adminUsername = config.Get("adminUsername")!;
+
         // ??
         var servicePort = config.Get("servicePort") ?? "80";
-        var vmName = config.Get("vmName") ?? "80";
+       
 
         // Create an Azure Resource Groups
         // ResourceGroup() need name and args fo RG config
@@ -158,16 +163,15 @@ class VMWithPrivateIPAddress : Stack
         var vm = new VirtualMachine("VM-Azure-Pulumi", new()
         {
             ResourceGroupName = VMResourceGroup.Name,
-            NetworkProfile = new ComputeInputs.NetworkProfileArgs
-            {
+            NetworkProfile = new ComputeInputs.NetworkProfileArgs {
                 NetworkInterfaces = new[] {
                     new ComputeInputs.NetworkInterfaceReferenceArgs {
                         Id = networkInterface.Id,
                         Primary = true, //?
-                    },
-                },
+                    }
+                }
             },
-            HardwareProfile = new ComputeInputs.HardwareProfileArgs
+            HardwareProfile = new ComputeInputs.HardwareProfileArgs 
             {
                 VmSize = vmSize,
             },
@@ -175,6 +179,18 @@ class VMWithPrivateIPAddress : Stack
             {
                 ComputerName = vmName,
                 // da li mi treba admin user ako nemam RDP vec hocu Bastion
+                AdminUsername = adminUsername,
+                //AdminPassword = "your_password", videcu da password zamenim sa SSH
+                WindowsConfiguration = new ComputeInputs.WindowsConfigurationArgs
+                {
+                    EnableAutomaticUpdates = true //?
+                }
+            },
+            // stari sam ostavila da vidim sta jos da se konfigurise
+            /*OsProfile = new ComputeInputs.OSProfileArgs
+            {
+                ComputerName = vmName,
+                
                 //AdminUsername = adminUsername,
                 //CustomData = Convert.ToBase64String(Encoding.UTF8.GetBytes(initScript)),
                 LinuxConfiguration = new ComputeInputs.LinuxConfigurationArgs
@@ -188,25 +204,33 @@ class VMWithPrivateIPAddress : Stack
                                  KeyData = sshKey.PublicKeyOpenssh,
                                  Path = $"/home/{adminUsername}/.ssh/authorized_keys",
                              },
-                         },*/
+                         },
                     },
                 },
-            },
+            },*/
+            // hocu da ne koristim pass
             StorageProfile = new ComputeInputs.StorageProfileArgs
             {
+                // OS HDD is created up and this is its configs
                 OsDisk = new ComputeInputs.OSDiskArgs
                 {
                     Name = $"{vmName}-osdisk",
                     CreateOption = DiskCreateOptionTypes.FromImage,
+                    ManagedDisk = new ComputeInputs.ManagedDiskParametersArgs
+                    {
+                        StorageAccountType = "Standard_LRS"  // Name for standard HDD
+                    }
                 },
-                /*ImageReference = new ComputeInputs.ImageReferenceArgs
+                // image reference refers to OS creations (definition for OS creation)
+                ImageReference = new ComputeInputs.ImageReferenceArgs 
                 {
-                    Publisher = osImagePublisher,
-                    Offer = osImageOffer,
-                    Sku = osImageSku,
-                    Version = osImageVersion,
-                },*/
-            },
+                    // the most afordable version
+                    Publisher = "MicrosoftWindowsServer",
+                    Offer = "WindowsServer",
+                    Sku = "2019-Datacenter",
+                    Version = "latest"
+                }
+            }
         });
     }
 

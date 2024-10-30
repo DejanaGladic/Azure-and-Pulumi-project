@@ -9,4 +9,7 @@ config:
     default: VM-Azure-Pulumi
   vmSize:
     description: The machine size to use for the VM
-    default: Standard_A1_v2
+    default: Standard_B1s
+  adminUsername:
+      description: The user account to create on the VM
+      default: dejanagladic
