@@ -7,6 +7,7 @@ using Pulumi.AzureNative.Resources;
 using Pulumi.AzureNative.Compute;
 using NetworkInputs = Pulumi.AzureNative.Network.Inputs;
 using ComputeInputs = Pulumi.AzureNative.Compute.Inputs;
+using System.Collections.Immutable;
 using System.Collections.Generic;
 
 class VMWithPrivateIPAddress : Stack
@@ -23,6 +24,7 @@ class VMWithPrivateIPAddress : Stack
         var adminUsername = config.Get("adminUsername")!;
         var adminPassword = config.RequireSecret("password")!; // value will be encrypted and dont be visible and exposed
 
+        // don t use port for URL for now
         //var servicePort = config.Get("servicePort") ?? "80";
 
 
@@ -224,19 +226,46 @@ class VMWithPrivateIPAddress : Stack
         var initScript = File.ReadAllText(initScriptPath);
         // use the script
         var vmScriptExtension = new VirtualMachineExtension("VM-Custom-Script-Extension", new VirtualMachineExtensionArgs
+        {
+            ResourceGroupName = VMResourceGroup.Name,
+            VmName = vmName,
+            Publisher = "Microsoft.Azure.Extensions",
+            Type = "CustomScript",
+            TypeHandlerVersion = "2.0",
+            Settings = new Dictionary<string, object>
+            {   //command to execute when VM runs --> run the shell script provided in file named first-script.sh
+                    { "commandToExecute", $"chmod +x {initScriptPath} && /bin/bash -c '{initScriptPath}'" }
+            }
+        }
+        );
+
+        // Once the machine is created, fetch its IP address and DNS hostname
+        // for public ip only
+        var vmAddress = vm.Id.Apply(_ =>
+        {
+            return GetPublicIPAddress.Invoke(new()
             {
                 ResourceGroupName = VMResourceGroup.Name,
-                VmName = vmName,
-                Publisher = "Microsoft.Azure.Extensions",
-                Type = "CustomScript",
-                TypeHandlerVersion = "2.0",
-                Settings = new Dictionary<string, object>
-                {   //command to execute when VM runs --> run the shell script provided in file named first-script.sh
-                    { "commandToExecute", $"/bin/bash -c '{initScript}'" }
-                }
-            }
-        );
+                PublicIpAddressName = publicIp.Name,
+            });
+        });
+
+        // Export the VM's hostname, public IP address, 
+        // HTTP URL and SSH missed for now
+        // only for public IP
+        this.OutputValues =  vmAddress.Apply(addr => {
+            var output = ImmutableDictionary<string, object?>.Empty
+                        .Add("ip", addr.IpAddress); 
+            return output;
+            // not to forgive if need
+            //["hostname"] = vmAddress.Apply(addr => addr.DnsSettings!.Fqdn),
+            //["url"] = vmAddress.Apply(addr => $"http://{addr.DnsSettings!.Fqdn}:{servicePort}")
+
+        });
     }
+
+    [Output]
+    public Output<ImmutableDictionary<string, object?>> OutputValues { get; set; }
 }
 
 class Program
