@@ -1,6 +1,7 @@
 # config value for stack
 config:
-  azure-native:location: WestEurope
+  # affordable region
+  azure-native:location: SwedenCentral
   Azure_Pulumi_project:adminUsername:
     default: dejanagladic
     description: The user account to create on the VM
