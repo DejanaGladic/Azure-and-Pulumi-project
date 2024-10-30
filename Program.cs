@@ -160,6 +160,7 @@ class VMWithPrivateIPAddress : Stack
         );
 
         // Create a VM
+        // for now login with username and pass but improvements can be: SSH public private key encription + would include some changes in NSG 
         var vm = new VirtualMachine("VM-Azure-Pulumi", new()
         {
             ResourceGroupName = VMResourceGroup.Name,
@@ -167,7 +168,7 @@ class VMWithPrivateIPAddress : Stack
                 NetworkInterfaces = new[] {
                     new ComputeInputs.NetworkInterfaceReferenceArgs {
                         Id = networkInterface.Id,
-                        Primary = true, //?
+                        Primary = true, //need to be set when we have more NICs for 1 VM
                     }
                 }
             },
@@ -183,39 +184,19 @@ class VMWithPrivateIPAddress : Stack
                 //AdminPassword = "your_password", videcu da password zamenim sa SSH
                 WindowsConfiguration = new ComputeInputs.WindowsConfigurationArgs
                 {
-                    EnableAutomaticUpdates = true //?
+                    EnableAutomaticUpdates = true, // by default is true but I dont need automatic updates
+                    
                 }
             },
-            // stari sam ostavila da vidim sta jos da se konfigurise
-            /*OsProfile = new ComputeInputs.OSProfileArgs
-            {
-                ComputerName = vmName,
-                
-                //AdminUsername = adminUsername,
-                //CustomData = Convert.ToBase64String(Encoding.UTF8.GetBytes(initScript)),
-                LinuxConfiguration = new ComputeInputs.LinuxConfigurationArgs
-                {
-                    DisablePasswordAuthentication = true,
-                    Ssh = new ComputeInputs.SshConfigurationArgs
-                    {
-                        /* PublicKeys = new[]
-                         {
-                             new ComputeInputs.SshPublicKeyArgs {
-                                 KeyData = sshKey.PublicKeyOpenssh,
-                                 Path = $"/home/{adminUsername}/.ssh/authorized_keys",
-                             },
-                         },
-                    },
-                },
-            },*/
-            // hocu da ne koristim pass
             StorageProfile = new ComputeInputs.StorageProfileArgs
             {
                 // OS HDD is created up and this is its configs
                 OsDisk = new ComputeInputs.OSDiskArgs
                 {
                     Name = $"{vmName}-osdisk",
+                    // we dont create image ourself
                     CreateOption = DiskCreateOptionTypes.FromImage,
+                    // use ManagedDisk
                     ManagedDisk = new ComputeInputs.ManagedDiskParametersArgs
                     {
                         StorageAccountType = "Standard_LRS"  // Name for standard HDD
