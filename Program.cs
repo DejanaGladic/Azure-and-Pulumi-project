@@ -64,8 +64,8 @@ class VMWithPrivateIPAddress : Stack
         );
 
         // Create a NSG (Network Security Group) with a rule
-        // Create a security group allowing inbound access over ports 80 (for HTTP) and 22 (for SSH)??
-        // ovo je sve demonstrativno za sada jer sve zavisi sta nama treba
+        // Create a security group allowing inbound access over ports 80 (for HTTP!!) and 22 (for SSH!!)??
+        // ovo je sve demonstrativno za sada jer sve zavisi sta nama treba --> ovo je podlozno promeni
         var networkSecurityGroup = new NetworkSecurityGroup("VM-Security-Rule-Group", new()
         {
             ResourceGroupName = networkResourceGroup.Name,
@@ -134,8 +134,7 @@ class VMWithPrivateIPAddress : Stack
             {
                 ResourceGroupName = VMResourceGroup.Name,
                 Location = region,
-                //DisableTcpStateTracking = true, ovo bas ne znam da li nam znaci ili ne
-                //EnableAcceleratedNetworking = true, ovo bas ne znam da li nam znaci ili ne
+                EnableAcceleratedNetworking = false, // for better performance, network offloading, better com between VM set to true
                 IpConfigurations = new[]
                 {
                     new NetworkInputs.NetworkInterfaceIPConfigurationArgs
@@ -182,12 +181,11 @@ class VMWithPrivateIPAddress : Stack
             OsProfile = new ComputeInputs.OSProfileArgs
             {
                 ComputerName = vmName,
-                // da li mi treba admin user ako nemam RDP vec hocu Bastion?
                 AdminUsername = adminUsername,
                 AdminPassword = adminPassword, 
                 WindowsConfiguration = new ComputeInputs.WindowsConfigurationArgs
                 {
-                    EnableAutomaticUpdates = true, // by default is true but I dont need automatic updates
+                    EnableAutomaticUpdates = false, // by default is true but I dont need automatic updates
                     
                 }
             },
@@ -217,12 +215,6 @@ class VMWithPrivateIPAddress : Stack
             }
         });
     }
-
-    // Expose the Resource Group name as an output and can be used inside code - posle cemo to
-    // this.ResourceGroupName = resourceGroup.Name;
-    // Expose an output that contains the Resource Group name  - posle cemo to
-    /*[Output]
-    public Output<string> ResourceGroupName { get; private set; }*/
 }
 
 class Program
