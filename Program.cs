@@ -59,10 +59,10 @@ class VMWithPrivateIPAddress : Stack
                 ResourceGroupName = VMResourceGroup.Name,
                 PublicIPAllocationMethod = IPAllocationMethod.Dynamic,
                 // if we have public IP DNS will be good to have
-                DnsSettings = new NetworkInputs.PublicIPAddressDnsSettingsArgs
+                /*DnsSettings = new NetworkInputs.PublicIPAddressDnsSettingsArgs
                 {
                     DomainNameLabel = "dejanas-first-VM",
-                }
+                }*/
             }
         );
 
