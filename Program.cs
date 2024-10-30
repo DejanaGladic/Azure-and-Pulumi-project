@@ -21,8 +21,7 @@ class VMWithPrivateIPAddress : Stack
         var adminUsername = config.Get("adminUsername")!;
         var adminPassword = config.RequireSecret("password")!; // value will be encrypted and dont be visible and exposed
 
-        // ??
-        var servicePort = config.Get("servicePort") ?? "80";
+        //var servicePort = config.Get("servicePort") ?? "80";
        
 
         // Create an Azure Resource Groups
@@ -207,10 +206,11 @@ class VMWithPrivateIPAddress : Stack
                 // image reference refers to OS creations (definition for OS creation)
                 ImageReference = new ComputeInputs.ImageReferenceArgs 
                 {
-                    // the most afordable version
-                    Publisher = "MicrosoftWindowsServer",
-                    Offer = "WindowsServer",
-                    Sku = "2019-Datacenter",
+                    // the most afordable version - Linux is better then Windows in terms of costs
+                    // alpine linux is maybe better for costs but I will leave the ordinary linux 
+                    Publisher = "Canonical",
+                    Offer = "UbuntuServer",
+                    Sku = "20.04-LTS",
                     Version = "latest"
                 }
             }
