@@ -14,11 +14,12 @@ class VMWithPrivateIPAddress : Stack
         // Import the program's configuration settings.
         // zasto u config ovo izdvajamo npr?
         var config = new Config();
-        var region = config.Get("azure-native:location");
+        var region = config.Get("azure-native:location")!;
         // the most afordable is OS hard disk drive (HDD)
         var vmSize = config.Get("vmSize")!;
         var vmName = config.Get("vmName")!;
         var adminUsername = config.Get("adminUsername")!;
+        var adminPassword = config.RequireSecret("password")!; // value will be encrypted and dont be visible and exposed
 
         // ??
         var servicePort = config.Get("servicePort") ?? "80";
@@ -179,9 +180,9 @@ class VMWithPrivateIPAddress : Stack
             OsProfile = new ComputeInputs.OSProfileArgs
             {
                 ComputerName = vmName,
-                // da li mi treba admin user ako nemam RDP vec hocu Bastion
+                // da li mi treba admin user ako nemam RDP vec hocu Bastion?
                 AdminUsername = adminUsername,
-                //AdminPassword = "your_password", videcu da password zamenim sa SSH
+                AdminPassword = adminPassword, 
                 WindowsConfiguration = new ComputeInputs.WindowsConfigurationArgs
                 {
                     EnableAutomaticUpdates = true, // by default is true but I dont need automatic updates

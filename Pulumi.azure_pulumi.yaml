@@ -1,15 +1,17 @@
 # config value for stack
 config:
   azure-native:location: WestEurope
-  servicePort: 
-    description: The HTTP service port to expose on the VM
+  Azure_Pulumi_project:adminUsername:
+    default: dejanagladic
+    description: The user account to create on the VM
+  Azure_Pulumi_project:password:
+    secure: AAABAHpiIaieEwvjqIkzWibVfF3Z+jSw64dk0bA0qvXAyzCQvq0qSuvp4NsPZw==
+  Azure_Pulumi_project:servicePort:
     default: "80"
-  vmName:
-    description: VM name
+    description: The HTTP service port to expose on the VM
+  Azure_Pulumi_project:vmName:
     default: VM-Azure-Pulumi
-  vmSize:
-    description: The machine size to use for the VM
+    description: VM name
+  Azure_Pulumi_project:vmSize:
     default: Standard_B1s
-  adminUsername:
-      description: The user account to create on the VM
-      default: dejanagladic
+    description: The machine size to use for the VM
