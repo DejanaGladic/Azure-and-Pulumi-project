@@ -1,11 +1,13 @@
 ﻿// define stack resources
 using System.Threading.Tasks;
 using Pulumi;
+using System.IO;
 using Pulumi.AzureNative.Network;
 using Pulumi.AzureNative.Resources;
 using Pulumi.AzureNative.Compute;
 using NetworkInputs = Pulumi.AzureNative.Network.Inputs;
 using ComputeInputs = Pulumi.AzureNative.Compute.Inputs;
+using System.Collections.Generic;
 
 class VMWithPrivateIPAddress : Stack
 {
@@ -22,7 +24,7 @@ class VMWithPrivateIPAddress : Stack
         var adminPassword = config.RequireSecret("password")!; // value will be encrypted and dont be visible and exposed
 
         //var servicePort = config.Get("servicePort") ?? "80";
-       
+
 
         // Create an Azure Resource Groups
         // ResourceGroup() need name and args fo RG config
@@ -166,7 +168,8 @@ class VMWithPrivateIPAddress : Stack
         var vm = new VirtualMachine("VM-Azure-Pulumi", new()
         {
             ResourceGroupName = VMResourceGroup.Name,
-            NetworkProfile = new ComputeInputs.NetworkProfileArgs {
+            NetworkProfile = new ComputeInputs.NetworkProfileArgs
+            {
                 NetworkInterfaces = new[] {
                     new ComputeInputs.NetworkInterfaceReferenceArgs {
                         Id = networkInterface.Id,
@@ -174,7 +177,7 @@ class VMWithPrivateIPAddress : Stack
                     }
                 }
             },
-            HardwareProfile = new ComputeInputs.HardwareProfileArgs 
+            HardwareProfile = new ComputeInputs.HardwareProfileArgs
             {
                 VmSize = vmSize,
             },
@@ -182,11 +185,11 @@ class VMWithPrivateIPAddress : Stack
             {
                 ComputerName = vmName,
                 AdminUsername = adminUsername,
-                AdminPassword = adminPassword, 
+                AdminPassword = adminPassword,
                 WindowsConfiguration = new ComputeInputs.WindowsConfigurationArgs
                 {
                     EnableAutomaticUpdates = false, // by default is true but I dont need automatic updates
-                    
+
                 }
             },
             StorageProfile = new ComputeInputs.StorageProfileArgs
@@ -204,7 +207,7 @@ class VMWithPrivateIPAddress : Stack
                     }
                 },
                 // image reference refers to OS creations (definition for OS creation)
-                ImageReference = new ComputeInputs.ImageReferenceArgs 
+                ImageReference = new ComputeInputs.ImageReferenceArgs
                 {
                     // the most afordable version - Linux is better then Windows in terms of costs
                     // alpine linux is maybe better for costs but I will leave the ordinary linux 
@@ -215,6 +218,24 @@ class VMWithPrivateIPAddress : Stack
                 }
             }
         });
+
+        // read the script 
+        var initScriptPath = "first-script.sh";
+        var initScript = File.ReadAllText(initScriptPath);
+        // use the script
+        var vmScriptExtension = new VirtualMachineExtension("VM-Custom-Script-Extension", new VirtualMachineExtensionArgs
+            {
+                ResourceGroupName = VMResourceGroup.Name,
+                VmName = vmName,
+                Publisher = "Microsoft.Azure.Extensions",
+                Type = "CustomScript",
+                TypeHandlerVersion = "2.0",
+                Settings = new Dictionary<string, object>
+                {   //command to execute when VM runs --> run the shell script provided in file named first-script.sh
+                    { "commandToExecute", $"/bin/bash -c '{initScript}'" }
+                }
+            }
+        );
     }
 }
 
