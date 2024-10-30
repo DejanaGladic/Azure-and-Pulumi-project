@@ -48,16 +48,18 @@ class VMWithPrivateIPAddress : Stack
 
         // Create a public IP address for the VM and VNIC - separate from subnet - just for initial project
         // going to be used in VNIC
+        // has to be removed later
         var publicIp = new PublicIPAddress(
             "VM-Public-Ip",
             new()
             {
                 ResourceGroupName = VMResourceGroup.Name,
-                PublicIPAllocationMethod = IPAllocationMethod.Dynamic
-                /*DnsSettings = new NetworkInputs.PublicIPAddressDnsSettingsArgs
-                 {
-                     DomainNameLabel = domainNameLabel,
-                 },*/
+                PublicIPAllocationMethod = IPAllocationMethod.Dynamic,
+                // if we have public IP DNS will be good to have
+                DnsSettings = new NetworkInputs.PublicIPAddressDnsSettingsArgs
+                {
+                    DomainNameLabel = "dejanas-first-VM",
+                }
             }
         );
 
