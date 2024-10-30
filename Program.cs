@@ -12,7 +12,7 @@ class VMWithPrivateIPAddress : Stack
     public VMWithPrivateIPAddress()
     {
         // Import the program's configuration settings.
-        // zasto u config ovo izdvajamo npr?
+        // vars u config contribute to better code management
         var config = new Config();
         var region = config.Get("azure-native:location")!;
         // the most afordable is OS hard disk drive (HDD)
@@ -63,16 +63,17 @@ class VMWithPrivateIPAddress : Stack
             }
         );
 
-        // Create a NSG (Network Security Group) with a rule
-        // Create a security group allowing inbound access over ports 80 (for HTTP!!) and 22 (for SSH!!)??
-        // ovo je sve demonstrativno za sada jer sve zavisi sta nama treba --> ovo je podlozno promeni
+        // Create a NSG (Network Security Group) without a rule for now
         var networkSecurityGroup = new NetworkSecurityGroup("VM-Security-Rule-Group", new()
         {
             ResourceGroupName = networkResourceGroup.Name,
-            Location = region,
+            Location = region /*,
             // beside the default rules, we can define our own rules
+
             SecurityRules = new[]
             {
+            
+                // Create a security group allowing inbound access over ports 80 (for HTTP!!) and 22 (for SSH!!)??
                 new NetworkInputs.SecurityRuleArgs {
                     Name = $"VM-Security-Rule-1",
                     Priority = 1000, // The lower the priority number, the higher the priority of the rule; must be unique for every rule; from 100 to 4096
@@ -90,7 +91,7 @@ class VMWithPrivateIPAddress : Stack
                     } // This Security Rule 1 means that all TCP traffic from all source ports and all source IP addresses 
                       // are allowed to all destination IP addresses, but only to the ports specified in DestinationPortRanges (e.g., servicePort and 22)
                 }
-            },
+            }*/
         });
 
         // Create a virtual network - VNet
