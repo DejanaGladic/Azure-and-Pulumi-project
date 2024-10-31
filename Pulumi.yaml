@@ -1,4 +1,4 @@
-# defines the project
+# defines the whole project
 name: Azure_Pulumi_project
 description: Create VM with private IP address in Azure with Pulumi
 runtime: dotnet

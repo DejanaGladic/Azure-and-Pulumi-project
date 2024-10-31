@@ -9,6 +9,7 @@ using NetworkInputs = Pulumi.AzureNative.Network.Inputs;
 using ComputeInputs = Pulumi.AzureNative.Compute.Inputs;
 using System.Collections.Immutable;
 using System.Collections.Generic;
+using Tls = Pulumi.Tls;
 
 class VMWithPrivateIPAddress : Stack
 {
@@ -19,14 +20,15 @@ class VMWithPrivateIPAddress : Stack
         var config = new Config();
         var region = config.Get("azure-native:location")!;
         // the most afordable is OS hard disk drive (HDD)
-        var vmSize = config.Get("vmSize")!;
-        var vmName = config.Get("vmName")!;
+        var vmSize = config.Require("vmSize")!;
+        var vmName = config.Require("vmName")!;
         var adminUsername = config.Get("adminUsername")!;
-        var adminPassword = config.RequireSecret("password")!; // value will be encrypted and dont be visible and exposed
-
+        var adminPassword = config.RequireSecret("adminPassword")!; // value will be encrypted and dont be visible and exposed
+        // for checking
+        Log.Info($"vmSize: {vmSize}");
+        Log.Info($"vmName: {vmName}");
         // don t use port for URL for now
         //var servicePort = config.Get("servicePort") ?? "80";
-
 
         // Create an Azure Resource Groups
         // ResourceGroup() need name and args fo RG config
@@ -70,31 +72,28 @@ class VMWithPrivateIPAddress : Stack
         var networkSecurityGroup = new NetworkSecurityGroup("VM-Security-Rule-Group", new()
         {
             ResourceGroupName = networkResourceGroup.Name,
-            Location = region /*,
+            Location = region,
             // beside the default rules, we can define our own rules
-
             SecurityRules = new[]
-            {
-            
-                // Create a security group allowing inbound access over ports 80 (for HTTP!!) and 22 (for SSH!!)??
+            {        
+                // Create a security group allowing inbound access over ports 22 for SSH!! to be able to connect tpo VM
                 new NetworkInputs.SecurityRuleArgs {
                     Name = $"VM-Security-Rule-1",
                     Priority = 1000, // The lower the priority number, the higher the priority of the rule; must be unique for every rule; from 100 to 4096
                     Direction = SecurityRuleDirection.Inbound, // rule is for inbound (incoming) traffic
                     Access = "Allow", // network traffic is allowed
-                    Protocol = "Tcp", // rule is applied only on Tcp protocols
-                    // opet nam ovo zavisi od cega se stitimo...
+                    Protocol = "Tcp", // rule is applied only on Tcp protocols - SSH use this protocol
+                    // it is not recommended to set * because of security but okay for now
                     SourcePortRange = "*", // * means all source ports
                     SourceAddressPrefix = "*", // * means all source Ip addresses
                     DestinationAddressPrefix = "*",
-                    DestinationPortRanges = new[]
+                    DestinationPortRanges = new[] // this is port from my VM to SSH traffic
                     {
-                        servicePort,
-                        "22",
+                        "22"
                     } // This Security Rule 1 means that all TCP traffic from all source ports and all source IP addresses 
-                      // are allowed to all destination IP addresses, but only to the ports specified in DestinationPortRanges (e.g., servicePort and 22)
+                      // are allowed to all destination IP addresses, but only to the ports specified in DestinationPortRanges (e.g., port 22)
                 }
-            }*/
+            }
         });
 
         // Create a virtual network - VNet
@@ -165,9 +164,11 @@ class VMWithPrivateIPAddress : Stack
             }
         );
 
+        // Public key from my PC
+        var publicKey = File.ReadAllText("/Users/user/.ssh/my_azure_key.pub");
         // Create a VM
         // for now login with username and pass but improvements can be: SSH public private key encription + would include some changes in NSG 
-        var vm = new VirtualMachine("VM-Azure-Pulumi", new()
+        var vm = new VirtualMachine(vmName, new()
         {
             ResourceGroupName = VMResourceGroup.Name,
             NetworkProfile = new ComputeInputs.NetworkProfileArgs
@@ -185,24 +186,33 @@ class VMWithPrivateIPAddress : Stack
             },
             OsProfile = new ComputeInputs.OSProfileArgs
             {
-                ComputerName = vmName,
+                ComputerName = vmName, // set the name for VM
                 AdminUsername = adminUsername,
                 AdminPassword = adminPassword,
-                WindowsConfiguration = new ComputeInputs.WindowsConfigurationArgs
-                {
-                    EnableAutomaticUpdates = false, // by default is true but I dont need automatic updates
-
-                }
+                LinuxConfiguration = new ComputeInputs.LinuxConfigurationArgs {
+                    DisablePasswordAuthentication = true,
+                    Ssh = new ComputeInputs.SshConfigurationArgs {
+                        PublicKeys = new[]
+                        {
+                            // get public key from my PC and sets it in this path on linux VM
+                            new ComputeInputs.SshPublicKeyArgs {
+                                KeyData = publicKey,
+                                // uzima public key 
+                                Path = $"/home/{adminUsername}/.ssh/authorized_keys",
+                            },
+                        },
+                    },
+                },
             },
             StorageProfile = new ComputeInputs.StorageProfileArgs
             {
                 // OS HDD is created up and this is its configs
                 OsDisk = new ComputeInputs.OSDiskArgs
                 {
-                    Name = $"{vmName}-osdisk",
+                    Name = "VM-OS-disk",
                     // we dont create image ourself
                     CreateOption = DiskCreateOptionTypes.FromImage,
-                    // use ManagedDisk
+                    // use ManagedDisk and store it in Standard_LRS
                     ManagedDisk = new ComputeInputs.ManagedDiskParametersArgs
                     {
                         StorageAccountType = "Standard_LRS"  // Name for standard HDD
@@ -214,34 +224,36 @@ class VMWithPrivateIPAddress : Stack
                     // the most afordable version - Linux is better then Windows in terms of costs
                     // alpine linux is maybe better for costs but I will leave the ordinary linux 
                     Publisher = "Canonical",
-                    Offer = "UbuntuServer",
-                    Sku = "20.04-LTS",
+                    Offer = "ubuntu-24_04-lts",
+                    Sku = "server",
                     Version = "latest"
                 }
             }
         });
 
-        // read the script 
-        var initScriptPath = "first-script.sh";
-        var initScript = File.ReadAllText(initScriptPath);
         // use the script
         var vmScriptExtension = new VirtualMachineExtension("VM-Custom-Script-Extension", new VirtualMachineExtensionArgs
-        {
-            ResourceGroupName = VMResourceGroup.Name,
-            VmName = vmName,
-            Publisher = "Microsoft.Azure.Extensions",
-            Type = "CustomScript",
-            TypeHandlerVersion = "2.0",
-            Settings = new Dictionary<string, object>
-            {   //command to execute when VM runs --> run the shell script provided in file named first-script.sh
-                    { "commandToExecute", $"chmod +x {initScriptPath} && /bin/bash -c '{initScriptPath}'" }
+            {
+                ResourceGroupName = VMResourceGroup.Name,
+                VmName = vm.Name, // to make a dependency with VM
+                Publisher = "Microsoft.Azure.Extensions",
+                Type = "CustomScript",
+                TypeHandlerVersion = "2.0",              
+                ProtectedSettings = new Dictionary<string, object>
+                {
+                    // this creates script with echo on VM and then execute that (direct simple script)
+                    { "commandToExecute", "echo Dejana" }
+
+                    // for more complex script can be used this
+                    // fileUris = new[] { "URL_to_your_script/my_script.sh" }, // URL to script file
+                    // commandToExecute = "bash my_script.sh"
+                }
             }
-        }
         );
 
         // Once the machine is created, fetch its IP address and DNS hostname
         // for public ip only
-        var vmAddress = vm.Id.Apply(_ =>
+        var vmAddress = vm.Id.Apply(addr =>
         {
             return GetPublicIPAddress.Invoke(new()
             {
@@ -250,12 +262,19 @@ class VMWithPrivateIPAddress : Stack
             });
         });
 
-        // Export the VM's hostname, public IP address, 
-        // HTTP URL and SSH missed for now
+        // Create an SSH private key for VM
+        var sshKey = new Tls.PrivateKey("ssh-key", new()
+        {
+            Algorithm = "RSA",
+            RsaBits = 4096,
+        });
+
+        // Export the public IP address and private key for SSH connection
         // only for public IP
         this.OutputValues =  vmAddress.Apply(addr => {
             var output = ImmutableDictionary<string, object?>.Empty
-                        .Add("ip", addr.IpAddress); 
+                        .Add("ip", addr.IpAddress)
+                        .Add("privatekey", sshKey.PrivateKeyOpenssh);
             return output;
             // not to forgive if need
             //["hostname"] = vmAddress.Apply(addr => addr.DnsSettings!.Fqdn),
