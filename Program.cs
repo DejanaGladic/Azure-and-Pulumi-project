@@ -16,7 +16,7 @@ class VMWithPrivateIPAddress : Stack
     public VMWithPrivateIPAddress()
     {
         // Import the program's configuration settings.
-        // vars u config contribute to better code management
+        // vars in config contribute to better code management
         var config = new Config();
         var region = config.Get("azure-native:location")!;
         // the most afordable is OS hard disk drive (HDD)
@@ -27,8 +27,6 @@ class VMWithPrivateIPAddress : Stack
         // for checking
         Log.Info($"vmSize: {vmSize}");
         Log.Info($"vmName: {vmName}");
-        // don t use port for URL for now
-        //var servicePort = config.Get("servicePort") ?? "80";
 
         // Create an Azure Resource Groups
         // ResourceGroup() need name and args fo RG config
@@ -60,15 +58,10 @@ class VMWithPrivateIPAddress : Stack
             {
                 ResourceGroupName = VMResourceGroup.Name,
                 PublicIPAllocationMethod = IPAllocationMethod.Dynamic,
-                // if we have public IP DNS will be good to have
-                /*DnsSettings = new NetworkInputs.PublicIPAddressDnsSettingsArgs
-                {
-                    DomainNameLabel = "dejanas-first-VM",
-                }*/
             }
         );
 
-        // Create a NSG (Network Security Group) without a rule for now
+        // Create a NSG (Network Security Group) with a rule for SSH access (to run a VM)
         var networkSecurityGroup = new NetworkSecurityGroup("VM-Security-Rule-Group", new()
         {
             ResourceGroupName = networkResourceGroup.Name,
@@ -87,7 +80,7 @@ class VMWithPrivateIPAddress : Stack
                     SourcePortRange = "*", // * means all source ports
                     SourceAddressPrefix = "*", // * means all source Ip addresses
                     DestinationAddressPrefix = "*",
-                    DestinationPortRanges = new[] // this is port from my VM to SSH traffic
+                    DestinationPortRanges = new[] // this is port from my VM for SSH traffic
                     {
                         "22"
                     } // This Security Rule 1 means that all TCP traffic from all source ports and all source IP addresses 
@@ -167,7 +160,7 @@ class VMWithPrivateIPAddress : Stack
         // Public key from my PC
         var publicKey = File.ReadAllText("/Users/user/.ssh/my_azure_key.pub");
         // Create a VM
-        // for now login with username and pass but improvements can be: SSH public private key encription + would include some changes in NSG 
+        // login with SSH public private key encription (pass has not been used for login and authentication to azure VM)
         var vm = new VirtualMachine(vmName, new()
         {
             ResourceGroupName = VMResourceGroup.Name,
@@ -197,7 +190,6 @@ class VMWithPrivateIPAddress : Stack
                             // get public key from my PC and sets it in this path on linux VM
                             new ComputeInputs.SshPublicKeyArgs {
                                 KeyData = publicKey,
-                                // uzima public key 
                                 Path = $"/home/{adminUsername}/.ssh/authorized_keys",
                             },
                         },
@@ -231,35 +223,9 @@ class VMWithPrivateIPAddress : Stack
             }
         });
 
-        // Transfer local script to Azure VM
-       /* var scriptFile = new FileAsset("/Users/user/Desktop/Azure-Pulumi-project/firstScript.sh"); //path to script on local PC
+        // Custom Script Extension has been removed
 
-        // use the script in Custom Script Extension
-        var vmScriptExtension = new VirtualMachineExtension("VM-Custom-Script-Extension", new VirtualMachineExtensionArgs {
-                ResourceGroupName = VMResourceGroup.Name,
-                VmName = vm.Name, // to make a dependency with VM
-                Publisher = "Microsoft.Azure.Extensions",
-                Type = "CustomScript",
-                TypeHandlerVersion = "2.0", 
-                Settings = new InputMap<string>
-                {
-                    { "fileUris", new InputList<string> { scriptFile.Url } }, // this will transfer script
-                    //{ "fileUris", new List<string> { } }, // remain empty because we dont use URI for script access
-                    { "commandToExecute", $"bash ./firstScript.sh" }  // execute script
-                }             
-                /*ProtectedSettings = new Dictionary<string, object>
-                {
-                    // this creates script with echo on VM and then execute that (direct simple script)
-                    { "commandToExecute", "echo Dejana" }
-
-                    // for more complex script can be used this
-                    // fileUris = new[] { "URL_to_your_script/my_script.sh" }, // URL to script file
-                    // commandToExecute = "bash my_script.sh"
-                }
-            }
-        );*/
-
-        // Once the machine is created, fetch its IP address and DNS hostname
+        // Once the machine is created, fetch its IP address
         // for public ip only
         var vmAddress = vm.Id.Apply(addr =>
         {
@@ -284,10 +250,6 @@ class VMWithPrivateIPAddress : Stack
                         .Add("ip", addr.IpAddress)
                         .Add("privatekey", sshKey.PrivateKeyOpenssh);
             return output;
-            // not to forgive if need
-            //["hostname"] = vmAddress.Apply(addr => addr.DnsSettings!.Fqdn),
-            //["url"] = vmAddress.Apply(addr => $"http://{addr.DnsSettings!.Fqdn}:{servicePort}")
-
         });
     }
 
