@@ -231,15 +231,23 @@ class VMWithPrivateIPAddress : Stack
             }
         });
 
-        // use the script
-        var vmScriptExtension = new VirtualMachineExtension("VM-Custom-Script-Extension", new VirtualMachineExtensionArgs
-            {
+        // Transfer local script to Azure VM
+       /* var scriptFile = new FileAsset("/Users/user/Desktop/Azure-Pulumi-project/firstScript.sh"); //path to script on local PC
+
+        // use the script in Custom Script Extension
+        var vmScriptExtension = new VirtualMachineExtension("VM-Custom-Script-Extension", new VirtualMachineExtensionArgs {
                 ResourceGroupName = VMResourceGroup.Name,
                 VmName = vm.Name, // to make a dependency with VM
                 Publisher = "Microsoft.Azure.Extensions",
                 Type = "CustomScript",
-                TypeHandlerVersion = "2.0",              
-                ProtectedSettings = new Dictionary<string, object>
+                TypeHandlerVersion = "2.0", 
+                Settings = new InputMap<string>
+                {
+                    { "fileUris", new InputList<string> { scriptFile.Url } }, // this will transfer script
+                    //{ "fileUris", new List<string> { } }, // remain empty because we dont use URI for script access
+                    { "commandToExecute", $"bash ./firstScript.sh" }  // execute script
+                }             
+                /*ProtectedSettings = new Dictionary<string, object>
                 {
                     // this creates script with echo on VM and then execute that (direct simple script)
                     { "commandToExecute", "echo Dejana" }
@@ -249,7 +257,7 @@ class VMWithPrivateIPAddress : Stack
                     // commandToExecute = "bash my_script.sh"
                 }
             }
-        );
+        );*/
 
         // Once the machine is created, fetch its IP address and DNS hostname
         // for public ip only
