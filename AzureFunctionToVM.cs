@@ -9,14 +9,14 @@ class AzureFunctionToVM : Stack
 {
     public AzureFunctionToVM()
     {
-        var config = new Config();
-        var region = config.Get("azure-native:location")!;
+        var configFun = new Config();
+        var regionFun = configFun.Get("function-stack:location")!;
 
         var functionResourceGroup = new ResourceGroup(
-            "Network-Resource-Group",
+            "Fun-Res-Group",
             new ResourceGroupArgs
             {
-                Location = region
+                Location = regionFun
             }
         );
 
@@ -24,7 +24,7 @@ class AzureFunctionToVM : Stack
         var appServicePlan = new AppServicePlan("Consumption-Plan", new()
         {
             ResourceGroupName = functionResourceGroup.Name,
-            Location = region,
+            Location = regionFun,
             Kind = "FunctionApp",  // Specify that this is for Function Apps
             Sku = new SkuDescriptionArgs
             {
@@ -36,10 +36,10 @@ class AzureFunctionToVM : Stack
 
         // storage account - most affordable
         // Create a Storage Account - don t use for now
-        var storageAccount = new StorageAccount("functionappstorage", new StorageAccountArgs
+        var storageAccount = new StorageAccount("Function-Storage", new StorageAccountArgs
         {
             ResourceGroupName = functionResourceGroup.Name,
-            Location = region,
+            Location = regionFun,
             Sku = new SkuArgs
             {
                 Name = SkuName.Standard_LRS,  // Most economical SKU

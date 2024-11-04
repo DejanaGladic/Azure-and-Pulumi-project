@@ -1,0 +1,3 @@
+# config value for one stack named function-stack in the project
+config:
+  function-stack:location: WestEurope

@@ -1,4 +1,5 @@
 ﻿// define stack resources
+using System.Collections;
 using System.Threading.Tasks;
 /*using Pulumi;
 using System.IO;
@@ -258,17 +259,25 @@ class VMWithPrivateIPAddress : Stack
 
 class Program
 {
-   // static Task<int> Main(string[] args) => Pulumi.Deployment.RunAsync<VMWithPrivateIPAddress>();
-    static Task<int> Main(string[] args) {
+    static Task<int> Main(string[] args)
+    {
         // Choose witch class to run in regards to params
-        if (args.Length > 0 && args[0] == "function")
+        // arg is name of the stack and then class to be executed
+        // dont work properly
+        if (args.Length > 0 && args[0] == "function-stack") // in function-stack is funcion
         {
             return Pulumi.Deployment.RunAsync(() => new AzureFunctionToVM());
         }
-        else
+        else if (args.Length > 0 && args[0] == "azure_pulumi") // in azure_pulumi stack is VM
         {
             return Pulumi.Deployment.RunAsync(() => new VMWithPrivateIPAddress()); // Default to VM stack
         }
+        else {
+            return Pulumi.Deployment.RunAsync(() => {new VMWithPrivateIPAddress(); new AzureFunctionToVM(); } ); // Default - both stacks
+        }
+
     }
-    
+
+
+
 }

@@ -1,4 +1,4 @@
-# config value for one stack in the project
+# config value for one stack named azure-pulumi in the project
 config:
   # returned to previous region
   azure-native:location: WestEurope
