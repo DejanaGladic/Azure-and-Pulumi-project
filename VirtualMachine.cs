@@ -1,6 +1,4 @@
-﻿// define stack resources
-using System.Threading.Tasks;
-/*using Pulumi;
+using Pulumi;
 using System.IO;
 using Pulumi.AzureNative.Network;
 using Pulumi.AzureNative.Resources;
@@ -254,25 +252,4 @@ class VMWithPrivateIPAddress : Stack
 
     [Output]
     public Output<ImmutableDictionary<string, object?>> OutputValues { get; set; }
-}*/
-
-class Program
-{
-   // static Task<int> Main(string[] args) => Pulumi.Deployment.RunAsync<VMWithPrivateIPAddress>();
-    static Task<int> Main(string[] args) {
-        // Choose witch class to run in regards to params
-        if (args.Length > 0 && args[0] == "vm")
-        {
-            return Pulumi.Deployment.RunAsync(() => new VMWithPrivateIPAddress());
-        }
-        else if (args.Length > 0 && args[0] == "function")
-        {
-            return Pulumi.Deployment.RunAsync(() => new AzureFunctionToVM());
-        }
-        else
-        {
-            return Pulumi.Deployment.RunAsync(() => new VMWithPrivateIPAddress()); // Default to VM stack
-        }
-    }
-    
 }
