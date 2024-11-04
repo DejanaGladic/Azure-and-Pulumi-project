@@ -261,11 +261,7 @@ class Program
    // static Task<int> Main(string[] args) => Pulumi.Deployment.RunAsync<VMWithPrivateIPAddress>();
     static Task<int> Main(string[] args) {
         // Choose witch class to run in regards to params
-        if (args.Length > 0 && args[0] == "vm")
-        {
-            return Pulumi.Deployment.RunAsync(() => new VMWithPrivateIPAddress());
-        }
-        else if (args.Length > 0 && args[0] == "function")
+        if (args.Length > 0 && args[0] == "function")
         {
             return Pulumi.Deployment.RunAsync(() => new AzureFunctionToVM());
         }
