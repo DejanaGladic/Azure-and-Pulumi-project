@@ -6,6 +6,7 @@ using Pulumi.AzureNative.Storage;
 using Pulumi.AzureNative.Storage.Inputs;
 using Pulumi.Random;
 using System.Linq;
+using System.Collections.Immutable;
 
 class AzureFunctionToVM
 {
@@ -93,18 +94,18 @@ class AzureFunctionToVM
                 }
             },
             HttpsOnly = true
-            /*StorageAccount = new WebAppStorageAccountArgs
-            {
-                AccountName = storageAccount.Name,
-                AccessKey = storageAccount.PrimaryAccessKey
-            }*/
         });
 
         // Export the Function App endpoint
-        this.FunctionEndpoint = Output.Format($"https://{app.DefaultHostName}/api/FunConnToVM");
+        // this.FunctionEndpoint = Output.Format($"https://{app.DefaultHostName}/api/FunConnToVM");
+        this.FunctionEndpoint =  app.DefaultHostName.Apply(hostname => {
+            var output = ImmutableDictionary<string, object?>.Empty
+                        .Add("webAppUrl", hostname);
+            return output;
+        });
 
     }
 
     [Output]
-    public Output<string> FunctionEndpoint { get; set; }
+    public Output<ImmutableDictionary<string, object?>> FunctionEndpoint { get; set; }
 }
