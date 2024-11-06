@@ -13,15 +13,6 @@ public static class FunConnToVM
         ILogger log)
     {
         log.LogInformation("C# HTTP trigger function processed a request.");
-
-        /*string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-        dynamic data = JsonConvert.DeserializeObject(requestBody);
-        
-        string name = data?.name;
-
-        return name != null
-            ? (ActionResult)new OkObjectResult($"Hello, {name}")
-            : new BadRequestObjectResult("Please pass a name in the request body");*/
         return new OkObjectResult($"Hello, Dejana");
     }
 }

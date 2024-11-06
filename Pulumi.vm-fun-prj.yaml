@@ -1,8 +1,7 @@
 config:
   azure-native:location: WestEurope
   Azure_Pulumi_project:adminUsername: dejanagladic
-  Azure_Pulumi_project:servicePort: "80"
-  Azure_Pulumi_project:vmName: VM-Azure-Pulumi
+  Azure_Pulumi_project:vmName: VM-with-private-ip
   Azure_Pulumi_project:vmSize: Standard_B1s
   Azure_Pulumi_project:password:
     secure: AAABALBBrCR5SdGMYdoFSqjoTAmPgXvf3GFISPbPf2KbtFmWNFCIkndn6GoZwnX1t/aSWmQ=

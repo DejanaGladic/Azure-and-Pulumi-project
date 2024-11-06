@@ -15,14 +15,6 @@ class AzureStack : Pulumi.Stack
 
 class Program
 {
-    static Task<int> Main(string[] args)
-    {
-
-        return Deployment.RunAsync(() =>
-        {
-            // all resources will be created in one stack azure-pulumi
-            var oneStack = new AzureStack();
-        });
-    }
+    static Task<int> Main() => Deployment.RunAsync<AzureStack>();
 
 }

@@ -7,11 +7,18 @@ using NetworkInputs = Pulumi.AzureNative.Network.Inputs;
 using ComputeInputs = Pulumi.AzureNative.Compute.Inputs;
 using System.Collections.Immutable;
 using Tls = Pulumi.Tls;
+using Pulumi.Random;
 
 class VMWithPrivateIPAddress
 {
     public VMWithPrivateIPAddress()
     {
+        // to make a unique names 
+        var suffix = new RandomString("sufix", new RandomStringArgs
+        {
+            Length = 8,
+            Special = false,
+        });
         // Import the program's configuration settings.
         // vars in config contribute to better code management
         var config = new Config();
@@ -30,7 +37,7 @@ class VMWithPrivateIPAddress
         // we can access RG name as resourceGroup.Name
         // resource group for networking
         var networkResourceGroup = new ResourceGroup(
-            "Network-Resource-Group",
+            $"Network-Resource-Group-{suffix}",
             new ResourceGroupArgs
             {
                 Location = region
@@ -39,7 +46,7 @@ class VMWithPrivateIPAddress
 
         // resource group for VM and its parts
         var VMResourceGroup = new ResourceGroup(
-            "VM-Resource-Group",
+            $"VM-Resource-Group-{suffix}",
             new ResourceGroupArgs
             {
                 Location = region
@@ -50,7 +57,7 @@ class VMWithPrivateIPAddress
         // going to be used in VNIC
         // has to be removed later
         var publicIp = new PublicIPAddress(
-            "VM-Public-Ip",
+            $"VM-Public-Ip-{suffix}",
             new()
             {
                 ResourceGroupName = VMResourceGroup.Name,
@@ -59,7 +66,7 @@ class VMWithPrivateIPAddress
         );
 
         // Create a NSG (Network Security Group) with a rule for SSH access (to run a VM)
-        var networkSecurityGroup = new NetworkSecurityGroup("VM-Security-Rule-Group", new()
+        var networkSecurityGroup = new NetworkSecurityGroup($"VM-Security-Rule-Group-{suffix}", new()
         {
             ResourceGroupName = networkResourceGroup.Name,
             Location = region,
@@ -68,7 +75,7 @@ class VMWithPrivateIPAddress
             {        
                 // Create a security group allowing inbound access over ports 22 for SSH!! to be able to connect tpo VM
                 new NetworkInputs.SecurityRuleArgs {
-                    Name = $"VM-Security-Rule-1",
+                    Name = $"VM-Security-Rule-1--{suffix}",
                     Priority = 1000, // The lower the priority number, the higher the priority of the rule; must be unique for every rule; from 100 to 4096
                     Direction = SecurityRuleDirection.Inbound, // rule is for inbound (incoming) traffic
                     Access = "Allow", // network traffic is allowed
@@ -89,7 +96,7 @@ class VMWithPrivateIPAddress
         // Create a virtual network - VNet
         // VirtualNetwork() use VNet name and args
         var virtualNetwork = new VirtualNetwork(
-            "VM-Virtual-Network",
+            $"VM-Virtual-Network-{suffix}",
             new VirtualNetworkArgs()
             {
                 ResourceGroupName = networkResourceGroup.Name,
@@ -106,7 +113,7 @@ class VMWithPrivateIPAddress
                     // NetworkInputs class has to be specified because we have SubnetArgs() in different classes
                     new NetworkInputs.SubnetArgs
                     {
-                        Name = "VMVirtualNetwork-subnet-1",
+                        Name = $"VMVirtualNetwork-subnet-1-{suffix}",
                         // first subnet has a address range from 10.0.0.0 to 10.0.0.254 (excluded)
                         AddressPrefix = "10.0.0.0/24", 
                         // Make an association NSG with Subnet
@@ -122,7 +129,7 @@ class VMWithPrivateIPAddress
 
         // Create VNIC (Virtual Network Interface Card)
         var networkInterface = new NetworkInterface(
-            "VM-NIC",
+            $"VM-NIC-{suffix}",
             new NetworkInterfaceArgs()
             {
                 ResourceGroupName = VMResourceGroup.Name,
@@ -132,7 +139,7 @@ class VMWithPrivateIPAddress
                 {
                     new NetworkInputs.NetworkInterfaceIPConfigurationArgs
                     {
-                        Name = "VM-ipconfig1",
+                        Name = $"VM-ipconfig1-{suffix}",
                         // optionally!!!!! - no instance level public IP but public IP assigned to vNIC which is connected to VM (not the same)
                         PublicIPAddress = new NetworkInputs.PublicIPAddressArgs
                         {
@@ -198,7 +205,7 @@ class VMWithPrivateIPAddress
                 // OS HDD is created up and this is its configs
                 OsDisk = new ComputeInputs.OSDiskArgs
                 {
-                    Name = "VM-OS-disk",
+                    Name = $"VM-OS-disk-{suffix}",
                     // we dont create image ourself
                     CreateOption = DiskCreateOptionTypes.FromImage,
                     // use ManagedDisk and store it in Standard_LRS
