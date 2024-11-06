@@ -1,10 +1,8 @@
-# config value for one stack named azure-pulumi in the project
 config:
-  # returned to previous region
   azure-native:location: WestEurope
   Azure_Pulumi_project:adminUsername: dejanagladic
   Azure_Pulumi_project:servicePort: "80"
   Azure_Pulumi_project:vmName: VM-Azure-Pulumi
   Azure_Pulumi_project:vmSize: Standard_B1s
-  Azure_Pulumi_project:mySecretPassword:
-    secure: AAABAGSmTPNvtBMXJyuMP0VQ4M7dFK6hXhQ98YIo4Q/W8k5jbp0jbLchNhlg3UfOna9K+iM=
+  Azure_Pulumi_project:password:
+    secure: AAABALBBrCR5SdGMYdoFSqjoTAmPgXvf3GFISPbPf2KbtFmWNFCIkndn6GoZwnX1t/aSWmQ=

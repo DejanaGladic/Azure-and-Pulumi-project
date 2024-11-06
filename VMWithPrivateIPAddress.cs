@@ -20,7 +20,7 @@ class VMWithPrivateIPAddress
         var vmSize = config.Require("vmSize")!;
         var vmName = config.Require("vmName")!;
         var adminUsername = config.Get("adminUsername")!;
-        var adminPassword = config.RequireSecret("mySecretPassword")!; // value will be encrypted and dont be visible and exposed
+        var adminPassword = config.RequireSecret("password")!; // value will be encrypted and dont be visible and exposed
         // for checking
         Log.Info($"vmSize: {vmSize}");
         Log.Info($"vmName: {vmName}");
