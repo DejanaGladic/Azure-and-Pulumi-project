@@ -5,6 +5,7 @@ using Pulumi.AzureNative.Web.Inputs;
 using Pulumi.AzureNative.Storage;
 using Pulumi.AzureNative.Storage.Inputs;
 using Pulumi.Random;
+using System.Linq;
 
 class AzureFunctionToVM
 {
@@ -21,7 +22,7 @@ class AzureFunctionToVM
         var regionFun = configFun.Get("location")!;
 
         var functionResourceGroup = new ResourceGroup(
-            $"Fun-Res-Group-{suffix_fun}",
+            $"Fun-Res-Group",
             new ResourceGroupArgs
             {
                 Location = regionFun
@@ -44,7 +45,7 @@ class AzureFunctionToVM
 
         // storage account - most affordable
         // Create a Storage Account - don t use for now
-        var storageAccount = new StorageAccount($"STA", new StorageAccountArgs
+        var storageAccount = new StorageAccount("sta", new StorageAccountArgs
         {
             ResourceGroupName = functionResourceGroup.Name,
             Location = regionFun,
@@ -55,18 +56,30 @@ class AzureFunctionToVM
             Kind = Kind.StorageV2,  // Recommended kind for Azure Functions
         });
 
-        var app = new WebApp($"FUN-{suffix_fun}", new()
+        // Retrieve storage account keys
+        var storageAccountKeys = Output.Tuple(functionResourceGroup.Name, storageAccount.Name).Apply(async names =>
+        {
+            var keys = await ListStorageAccountKeys.InvokeAsync(new ListStorageAccountKeysArgs
+            {
+                ResourceGroupName = names.Item1,
+                AccountName = names.Item2,
+            });
+            return keys.Keys.First().Value;
+        });
+
+        var app = new WebApp($"httpFunToVM", new()
         {
             ResourceGroupName = functionResourceGroup.Name,
             ServerFarmId = appServicePlan.Id,
             SiteConfig = new SiteConfigArgs
             {
                 AppSettings = {
-                    /*new NameValuePairArgs
+                    new NameValuePairArgs
                     {
+                        // connection to azure storage
                         Name = "AzureWebJobsStorage",
-                        Value = storageAccount. 
-                    },*/
+                        Value = Output.Format($"DefaultEndpointsProtocol=https;AccountName={storageAccount.Name};AccountKey={storageAccountKeys};EndpointSuffix=core.windows.net")
+                    },
                     new NameValuePairArgs
                     {
                         Name = "FUNCTIONS_WORKER_RUNTIME",
@@ -78,7 +91,8 @@ class AzureFunctionToVM
                         Value = "~4" // Version of Azure func
                     }
                 }
-            }
+            },
+            HttpsOnly = true
             /*StorageAccount = new WebAppStorageAccountArgs
             {
                 AccountName = storageAccount.Name,
@@ -86,5 +100,11 @@ class AzureFunctionToVM
             }*/
         });
 
+        // Export the Function App endpoint
+        this.FunctionEndpoint = Output.Format($"https://{app.DefaultHostName}/api/FunConnToVM");
+
     }
+
+    [Output]
+    public Output<string> FunctionEndpoint { get; set; }
 }
