@@ -5,12 +5,12 @@ using Pulumi.AzureNative.Web.Inputs;
 using Pulumi.AzureNative.Storage;
 using Pulumi.AzureNative.Storage.Inputs;
 
-class AzureFunctionToVM : Stack
+class AzureFunctionToVM
 {
     public AzureFunctionToVM()
-    {
+    { 
         var configFun = new Config();
-        var regionFun = configFun.Get("function-stack:location")!;
+        var regionFun = configFun.Get("azure-native:location")!;
 
         var functionResourceGroup = new ResourceGroup(
             "Fun-Res-Group",

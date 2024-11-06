@@ -8,7 +8,7 @@ using ComputeInputs = Pulumi.AzureNative.Compute.Inputs;
 using System.Collections.Immutable;
 using Tls = Pulumi.Tls;
 
-class VMWithPrivateIPAddress : Stack
+class VMWithPrivateIPAddress
 {
     public VMWithPrivateIPAddress()
     {
@@ -20,7 +20,7 @@ class VMWithPrivateIPAddress : Stack
         var vmSize = config.Require("vmSize")!;
         var vmName = config.Require("vmName")!;
         var adminUsername = config.Get("adminUsername")!;
-        var adminPassword = config.RequireSecret("adminPassword")!; // value will be encrypted and dont be visible and exposed
+        var adminPassword = config.RequireSecret("mySecretPassword")!; // value will be encrypted and dont be visible and exposed
         // for checking
         Log.Info($"vmSize: {vmSize}");
         Log.Info($"vmName: {vmName}");
