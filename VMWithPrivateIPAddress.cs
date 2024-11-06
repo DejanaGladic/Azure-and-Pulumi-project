@@ -13,16 +13,16 @@ class VMWithPrivateIPAddress
 {
     public VMWithPrivateIPAddress()
     {
-        // to make a unique names 
+        // to make a unique names  - can be deleted but ok
         var suffix = new RandomString("sufix", new RandomStringArgs
         {
-            Length = 8,
+            Length = 2,
             Special = false,
         });
         // Import the program's configuration settings.
         // vars in config contribute to better code management
         var config = new Config();
-        var region = config.Get("azure-native:location")!;
+        var region = config.Get("location")!;
         // the most afordable is OS hard disk drive (HDD)
         var vmSize = config.Require("vmSize")!;
         var vmName = config.Require("vmName")!;

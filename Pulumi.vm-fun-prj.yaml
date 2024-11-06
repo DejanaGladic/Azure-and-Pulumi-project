@@ -1,7 +1,8 @@
 config:
-  azure-native:location: WestEurope
+  Azure_Pulumi_project:location: WestEurope
   Azure_Pulumi_project:adminUsername: dejanagladic
   Azure_Pulumi_project:vmName: VM-with-private-ip
   Azure_Pulumi_project:vmSize: Standard_B1s
   Azure_Pulumi_project:password:
     secure: AAABALBBrCR5SdGMYdoFSqjoTAmPgXvf3GFISPbPf2KbtFmWNFCIkndn6GoZwnX1t/aSWmQ=
+  Azure_Pulumi_project:subscriptionId: 61ba28de-0793-479b-b7a8-95b060c074eb

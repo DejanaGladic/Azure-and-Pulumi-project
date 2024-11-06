@@ -10,15 +10,15 @@ class AzureFunctionToVM
 {
     public AzureFunctionToVM()
     { 
-        // to make a unique names 
+        // to make a unique names - can be deleted but ok
         var suffix_fun = new RandomString("sufix_fun", new RandomStringArgs
         {
-            Length = 8,
+            Length = 2,
             Special = false,
         });
         
         var configFun = new Config();
-        var regionFun = configFun.Get("azure-native:location")!;
+        var regionFun = configFun.Get("location")!;
 
         var functionResourceGroup = new ResourceGroup(
             $"Fun-Res-Group-{suffix_fun}",
@@ -44,7 +44,7 @@ class AzureFunctionToVM
 
         // storage account - most affordable
         // Create a Storage Account - don t use for now
-        var storageAccount = new StorageAccount($"Function-Storage-{suffix_fun}", new StorageAccountArgs
+        var storageAccount = new StorageAccount($"STA", new StorageAccountArgs
         {
             ResourceGroupName = functionResourceGroup.Name,
             Location = regionFun,
@@ -55,7 +55,7 @@ class AzureFunctionToVM
             Kind = Kind.StorageV2,  // Recommended kind for Azure Functions
         });
 
-        var app = new WebApp($"Function-To-VM-{suffix_fun}", new()
+        var app = new WebApp($"FUN-{suffix_fun}", new()
         {
             ResourceGroupName = functionResourceGroup.Name,
             ServerFarmId = appServicePlan.Id,
