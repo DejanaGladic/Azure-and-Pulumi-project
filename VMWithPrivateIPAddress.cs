@@ -249,14 +249,13 @@ class VMWithPrivateIPAddress
 
         // Export the public IP address and private key for SSH connection
         // only for public IP
-        this.OutputValues =  vmAddress.Apply(addr => {
+        this.outputValues =  vmAddress.Apply(addr => {
             var output = ImmutableDictionary<string, object?>.Empty
                         .Add("ip", addr.IpAddress)
                         .Add("privatekey", sshKey.PrivateKeyOpenssh);
-            return output;
+            return Output.Create(output);
         });
     }
 
-    [Output]
-    public Output<ImmutableDictionary<string, object?>> OutputValues { get; set; }
+    public Output<ImmutableDictionary<string, object?>> outputValues {get; set;}
 }
