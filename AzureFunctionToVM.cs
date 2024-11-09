@@ -81,7 +81,7 @@ class AzureFunctionToVM
         });
 
 
-        // Retrieve storage account keys for connection
+        // Retrieve storage account keys for connection - storage account is an output and some features will be known after deploy, so we use Apply and async
         var storageAccountKeys = Output.Tuple(functionResourceGroup.Name, storageAccount.Name).Apply(async names =>
         {
             var keys = await ListStorageAccountKeys.InvokeAsync(new ListStorageAccountKeysArgs
@@ -95,16 +95,25 @@ class AzureFunctionToVM
         // storageAccount.Name - maybe can be a problem
         // Conection string for storage
         // var connStringStorage = Output.Format($"DefaultEndpointsProtocol=https;AccountName={storageAccount.Name};AccountKey={storageAccountKeys};EndpointSuffix=core.windows.net");
-        var connStringStorage = storageAccountKeys.Apply(key => 
+        /*var connStringStorage = storageAccountKeys.Apply(key => 
             $"DefaultEndpointsProtocol=https;AccountName={storageAccount.Name};AccountKey={key};EndpointSuffix=core.windows.net"
-        );
+        );*/
+        var connStringStorage = Output.Tuple(storageAccount.Name, storageAccountKeys).Apply(async tuple => {
+            var accountName = tuple.Item1;  // Storage Account Name
+            var accountKey = tuple.Item2;   // First Storage Account Key
 
+            return $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
+        });
+
+        var sasToken = "";
         // blob url - not sure for that
-        var codeBlobUrl = storageAccountKeys.Apply(key => {
+        var codeBlobUrl = Output.Tuple(storageAccount.Name, storageAccountKeys).Apply(tuple => {
+            var accountName = tuple.Item1;  // The storage account name
+            var key = tuple.Item2;  // The storage account key
             // Construct the BlobServiceClient using the storage account credentials
             var blobServiceClient = new BlobServiceClient(
-                new Uri($"https://{storageAccount.Name}.blob.core.windows.net"), 
-                new StorageSharedKeyCredential(storageAccount.Name, key));
+                new Uri($"https://{accountName}.blob.core.windows.net"), 
+                new StorageSharedKeyCredential(accountName, key));
 
             // Reference the container and blob within the storage account
             var blobContainerClient = blobServiceClient.GetBlobContainerClient("zips"); // Specify your container name
@@ -122,7 +131,7 @@ class AzureFunctionToVM
             sasBuilder.SetPermissions(BlobSasPermissions.Read); // Grant read permissions
 
             // Generate the SAS token for the blob
-            var sasToken = sasBuilder.ToSasQueryParameters(new StorageSharedKeyCredential(storageAccount.Name, key)).ToString();
+            sasToken = sasBuilder.ToSasQueryParameters(new StorageSharedKeyCredential(accountName, key)).ToString();
 
             // Combine the base URI of the blob with the SAS token to create the full URL
             return $"{blobClient.Uri}?{sasToken}";
@@ -172,6 +181,7 @@ class AzureFunctionToVM
                     {
                         Name = "WEBSITE_RUN_FROM_PACKAGE",
                         Value = codeBlobUrl
+                        // npr vrednost je https://stae37580fe.blob.core.windows.net/zips/zip
                     }
                 }
             },

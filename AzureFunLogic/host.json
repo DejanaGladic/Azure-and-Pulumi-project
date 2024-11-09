@@ -9,8 +9,9 @@
             "enableLiveMetricsFilters": true
         },
         "logLevel": {
-            "default": "Debug",
-            "Function": "Debug"
+            "Function": "Information",
+            "Host": "Information",
+            "Default": "Information"
         }
     }
 }

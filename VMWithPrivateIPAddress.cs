@@ -28,9 +28,6 @@ class VMWithPrivateIPAddress
         var vmName = config.Require("vmName")!;
         var adminUsername = config.Get("adminUsername")!;
         var adminPassword = config.RequireSecret("password")!; // value will be encrypted and dont be visible and exposed
-        // for checking
-        Log.Info($"vmSize: {vmSize}");
-        Log.Info($"vmName: {vmName}");
 
         // Create an Azure Resource Groups
         // ResourceGroup() need name and args fo RG config
