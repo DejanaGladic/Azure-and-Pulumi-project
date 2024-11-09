@@ -11,6 +11,7 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Sas;
 using Azure.Storage;
 using System;
+using System.Collections.Generic;
 
 
 class AzureFunctionToVM
@@ -54,8 +55,10 @@ class AzureFunctionToVM
         {
             ResourceGroupName = functionResourceGroup.Name,
             AccountName = storageAccount.Name,
-            ContainerName = "zips"
+            PublicAccess = PublicAccess.Blob
         });
+
+        // Compile the the app. - ne moram jer cu vec zip kod da stavim u storage account
 
         // put a AzureFunLogic folder in previously created container
         var codeBlob = new Blob("zip", new BlobArgs
@@ -63,7 +66,7 @@ class AzureFunctionToVM
             ResourceGroupName = functionResourceGroup.Name,
             AccountName = storageAccount.Name,
             ContainerName = codeContainer.Name,
-            Source = new FileArchive("./AzureFunLogic")
+            Source = new FileArchive("/AzureFunLogic")
         });
 
         // appService --> consumption plan 
@@ -74,7 +77,6 @@ class AzureFunctionToVM
             Kind = "FunctionApp",  // Specify that this is for Function Apps
             Sku = new SkuDescriptionArgs
             {
-                Capacity = 1, //Current number of instances assigned to the resource.
                 Name = "Y1",        // Size for the Consumption Plan
                 Tier = "Dynamic", //consumption plan for azure function
             },
@@ -91,52 +93,15 @@ class AzureFunctionToVM
             });
             return keys.Keys.First().Value;
         });
-
-        // storageAccount.Name - maybe can be a problem
+ 
         // Conection string for storage
-        // var connStringStorage = Output.Format($"DefaultEndpointsProtocol=https;AccountName={storageAccount.Name};AccountKey={storageAccountKeys};EndpointSuffix=core.windows.net");
-        /*var connStringStorage = storageAccountKeys.Apply(key => 
+        var connStringStorage = storageAccountKeys.Apply(key => 
             $"DefaultEndpointsProtocol=https;AccountName={storageAccount.Name};AccountKey={key};EndpointSuffix=core.windows.net"
-        );*/
-        var connStringStorage = Output.Tuple(storageAccount.Name, storageAccountKeys).Apply(async tuple => {
-            var accountName = tuple.Item1;  // Storage Account Name
-            var accountKey = tuple.Item2;   // First Storage Account Key
+        );
 
-            return $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
-        });
-
-        var sasToken = "";
-        // blob url - not sure for that
-        var codeBlobUrl = Output.Tuple(storageAccount.Name, storageAccountKeys).Apply(tuple => {
-            var accountName = tuple.Item1;  // The storage account name
-            var key = tuple.Item2;  // The storage account key
-            // Construct the BlobServiceClient using the storage account credentials
-            var blobServiceClient = new BlobServiceClient(
-                new Uri($"https://{accountName}.blob.core.windows.net"), 
-                new StorageSharedKeyCredential(accountName, key));
-
-            // Reference the container and blob within the storage account
-            var blobContainerClient = blobServiceClient.GetBlobContainerClient("zips"); // Specify your container name
-            var blobClient = blobContainerClient.GetBlobClient("AzureFunLogic.zip"); // Specify the blob name
-
-            // Build the SAS token with read permissions
-            var sasBuilder = new BlobSasBuilder
-            {
-                BlobContainerName = "zips", // Container name
-                BlobName = "AzureFunLogic.zip", // Blob name
-                Resource = "b", // The resource type (b = blob)
-                ExpiresOn = DateTimeOffset.UtcNow.AddHours(1), // Expiry time for the SAS token
-            };
-
-            sasBuilder.SetPermissions(BlobSasPermissions.Read); // Grant read permissions
-
-            // Generate the SAS token for the blob
-            sasToken = sasBuilder.ToSasQueryParameters(new StorageSharedKeyCredential(accountName, key)).ToString();
-
-            // Combine the base URI of the blob with the SAS token to create the full URL
-            return $"{blobClient.Uri}?{sasToken}";
-        });
-
+        // key for SAS
+        var keySAS = storageAccountKeys.Apply(key => key);
+        
         // Web app is used as function app when the plan is consumption plan
         var app = new WebApp($"httpFunToVM", new()
         {
@@ -145,17 +110,9 @@ class AzureFunctionToVM
             Kind = "FunctionApp",
             SiteConfig = new SiteConfigArgs
             {
+                DetailedErrorLoggingEnabled = true,
+                HttpLoggingEnabled = true,
                 AppSettings = {
-                    new NameValuePairArgs
-                    {
-                        Name = "AzureWebJobsFeatureFlags",
-                        Value = "EnableWorkerIndexing"
-                    },
-                    new NameValuePairArgs
-                    {
-                        Name = "AzureWebJobsDashboard",
-                        Value = "true"
-                    },
                     new NameValuePairArgs
                     {
                         // connection to azure storage
@@ -169,42 +126,44 @@ class AzureFunctionToVM
                     },
                     new NameValuePairArgs
                     {
-                        Name = "FUNCTIONS_EXTENSION_VERSION",
-                        Value = "~4" // Version of Azure func
-                    },
-                    new NameValuePairArgs
-                    {
-                        Name = "WEBSITE_NODE_DEFAULT_VERSION",
-                        Value = "~18"
-                    },
-                    new NameValuePairArgs
-                    {
                         Name = "WEBSITE_RUN_FROM_PACKAGE",
-                        Value = codeBlobUrl
+                        // Value = codeBlobUrl od ranije
                         // npr vrednost je https://stae37580fe.blob.core.windows.net/zips/zip
+                        Value = Output.Tuple(storageAccount.Name, codeContainer.Name, codeBlob.Name, keySAS).Apply(values =>
+                        {
+                            var accountName = values.Item1;
+                            var containerName = values.Item2;
+                            var blobName = values.Item3;
+                            var sasToken = new BlobSasBuilder {
+                                BlobContainerName = containerName,
+                                BlobName = blobName,
+                                Resource = "b",  // Resource type: blob
+                                ExpiresOn = DateTimeOffset.UtcNow.AddHours(4)  // Set appropriate expiry
+                            };
+                            var key = values.Item4;
+                            sasToken.SetPermissions(BlobSasPermissions.Read);                     
+                            var token = sasToken.ToSasQueryParameters(new StorageSharedKeyCredential(accountName, key));
+                            return $"https://{accountName}.blob.core.windows.net/{containerName}/{blobName}?{token}";
+                        }),
                     }
+                },
+                Cors = new CorsSettingsArgs {
+                    AllowedOrigins = new[]
+                    {
+                        "*",
+                    },
                 }
             },
+            
             HttpsOnly = true
         });
 
-
-        // Compile the the app. - da ne moram rucno, ovo je korisno
-        /*var outputPath = "publish";
-        var publishCommand = Run.Invoke(new()
-        {
-            Command = $"dotnet publish --output {outputPath}",
-            Dir = appPath,
-        });*/
-
-
-        // proveri i ovo
-        // Export the Function App endpoint
-        // this.FunctionEndpoint = Output.Format($"https://{app.DefaultHostName}/api/FunConnToVM");
+        // Export the Function App endpoint - mora apply zbog cekanja na vrednost
         this.functionEndpoint = app.DefaultHostName.Apply(hostname =>
         {
             var output = ImmutableDictionary<string, object?>.Empty
-                        .Add("webAppUrl", $"https://{hostname}/api/SimpleHttpFunction");
+                        .Add("apiURL", $"https://{hostname}/api/SimpleHttpFunction")
+                        .Add("siteURL",storageAccount.PrimaryEndpoints.Apply(primaryEndpoints => primaryEndpoints.Web));
             return Output.Create(output);
         });
 

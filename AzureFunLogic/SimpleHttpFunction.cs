@@ -16,6 +16,18 @@ namespace AzureFunLogic
             ILogger log)
         {
             try{
+                var res = req.HttpContext.Response;
+
+                res.Headers.Append("Access-Control-Allow-Origin", "*");
+                res.Headers.Append("Access-Control-Allow-Methods", "GET");
+
+                if (HttpMethods.IsOptions(req.Method)) {
+
+                    return new NoContentResult();
+
+                }
+
+                res.Headers.Append("Content-Type", "application/json");
                 log.LogInformation("C# HTTP trigger function processed a request.");
 
                 return new OkObjectResult("Dejana has created AzureFunction!");
