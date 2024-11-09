@@ -52,8 +52,7 @@ class AzureFunctionToVM
         var codeContainer = new BlobContainer("zips", new BlobContainerArgs
         {
             ResourceGroupName = functionResourceGroup.Name,
-            AccountName = storageAccount.Name,
-            PublicAccess = PublicAccess.Blob
+            AccountName = storageAccount.Name
         });
 
         // Compile the the app. - ne moram jer cu vec zip kod da stavim u storage account
@@ -64,7 +63,7 @@ class AzureFunctionToVM
             ResourceGroupName = functionResourceGroup.Name,
             AccountName = storageAccount.Name,
             ContainerName = codeContainer.Name,
-            Source = new FileArchive("/AzureFunLogic")
+            Source = new FileArchive("./AzureFunLogic")
         });
 
         // appService --> consumption plan 
@@ -145,12 +144,12 @@ class AzureFunctionToVM
                         Value = blobUrl
                     }
                 },
-                Cors = new CorsSettingsArgs {
+                /*Cors = new CorsSettingsArgs {
                     AllowedOrigins = new[]
                     {
                         "*",
                     },
-                }
+                }*/
             },
             
             HttpsOnly = true
@@ -161,12 +160,12 @@ class AzureFunctionToVM
         {
             var output = ImmutableDictionary<string, object?>.Empty
                         .Add("apiURL", $"https://{hostname}/api/SimpleHttpFunction")
-                        .Add("siteURL",storageAccount.PrimaryEndpoints.Apply(primaryEndpoints => primaryEndpoints.Web));
+                        .Add("siteURL",storageAccount.PrimaryEndpoints.Apply(primaryEndpoints => primaryEndpoints.Web))
+                        .Add("blob url", blobUrl);
             return Output.Create(output);
         });
 
     }
 
     public Output<ImmutableDictionary<string, object?>> functionEndpoint { get; set; }
-    public Output<ImmutableDictionary<string, object?>> blobUrl { get; set; }
 }

@@ -1,0 +1,16 @@
+{
+    "scriptFile": "SimpleHttpFunction.cs",  
+    "bindings": [
+      {
+        "authLevel": "anonymous",  
+        "type": "httpTrigger",    
+        "direction": "in",        
+        "methods": ["get"],  
+        "route": "SimpleHttpFunction" 
+      },
+      {
+        "type": "http",       
+        "direction": "out"
+      }
+    ]
+  }
