@@ -7,11 +7,9 @@ using Pulumi.AzureNative.Storage.Inputs;
 using Pulumi.Random;
 using System.Linq;
 using System.Collections.Immutable;
-using Azure.Storage.Blobs;
 using Azure.Storage.Sas;
 using Azure.Storage;
 using System;
-using System.Collections.Generic;
 
 
 class AzureFunctionToVM
@@ -102,6 +100,23 @@ class AzureFunctionToVM
         // key for SAS
         var keySAS = storageAccountKeys.Apply(key => key);
         
+        // url for website code in blob
+        var blobUrl = Output.Tuple(storageAccount.Name, codeContainer.Name, codeBlob.Name, keySAS).Apply(values => {
+                            var accountName = values.Item1;
+                            var containerName = values.Item2;
+                            var blobName = values.Item3;
+                            var sasToken = new BlobSasBuilder {
+                                BlobContainerName = containerName,
+                                BlobName = blobName,
+                                Resource = "b",  // Resource type: blob
+                                ExpiresOn = DateTimeOffset.UtcNow.AddHours(4)  // Set appropriate expiry
+                            };
+                            var key = values.Item4;
+                            sasToken.SetPermissions(BlobSasPermissions.Read);                     
+                            var token = sasToken.ToSasQueryParameters(new StorageSharedKeyCredential(accountName, key));
+                            return $"https://{accountName}.blob.core.windows.net/{containerName}/{blobName}?{token}";
+        });
+
         // Web app is used as function app when the plan is consumption plan
         var app = new WebApp($"httpFunToVM", new()
         {
@@ -127,24 +142,7 @@ class AzureFunctionToVM
                     new NameValuePairArgs
                     {
                         Name = "WEBSITE_RUN_FROM_PACKAGE",
-                        // Value = codeBlobUrl od ranije
-                        // npr vrednost je https://stae37580fe.blob.core.windows.net/zips/zip
-                        Value = Output.Tuple(storageAccount.Name, codeContainer.Name, codeBlob.Name, keySAS).Apply(values =>
-                        {
-                            var accountName = values.Item1;
-                            var containerName = values.Item2;
-                            var blobName = values.Item3;
-                            var sasToken = new BlobSasBuilder {
-                                BlobContainerName = containerName,
-                                BlobName = blobName,
-                                Resource = "b",  // Resource type: blob
-                                ExpiresOn = DateTimeOffset.UtcNow.AddHours(4)  // Set appropriate expiry
-                            };
-                            var key = values.Item4;
-                            sasToken.SetPermissions(BlobSasPermissions.Read);                     
-                            var token = sasToken.ToSasQueryParameters(new StorageSharedKeyCredential(accountName, key));
-                            return $"https://{accountName}.blob.core.windows.net/{containerName}/{blobName}?{token}";
-                        }),
+                        Value = blobUrl
                     }
                 },
                 Cors = new CorsSettingsArgs {
@@ -170,4 +168,5 @@ class AzureFunctionToVM
     }
 
     public Output<ImmutableDictionary<string, object?>> functionEndpoint { get; set; }
+    public Output<ImmutableDictionary<string, object?>> blobUrl { get; set; }
 }
