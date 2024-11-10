@@ -10,6 +10,7 @@ using System.Collections.Immutable;
 using Azure.Storage.Sas;
 using Azure.Storage;
 using System;
+using System.IO;
 
 
 class AzureFunctionToVM
@@ -66,6 +67,7 @@ class AzureFunctionToVM
             Source = new FileArchive("./AzureFunLogic")
         });
 
+
         // appService --> consumption plan 
         var appServicePlan = new AppServicePlan($"Consumption-Plan-{suffix_fun}", new()
         {
@@ -90,14 +92,17 @@ class AzureFunctionToVM
             });
             return keys.Keys.First().Value;
         });
- 
-        // Conection string for storage
-        var connStringStorage = storageAccountKeys.Apply(key => 
-            $"DefaultEndpointsProtocol=https;AccountName={storageAccount.Name};AccountKey={key};EndpointSuffix=core.windows.net"
-        );
 
         // key for SAS
         var keySAS = storageAccountKeys.Apply(key => key);
+        var storageAccName = storageAccount.Name.Apply(name => name);
+        var connStringStorage = Output.Tuple(keySAS, storageAccName).Apply(values => {
+            return $"DefaultEndpointsProtocol=https;AccountName={values.Item2};AccountKey={values.Item1};EndpointSuffix=core.windows.net";
+        });
+         // Conection string for storage
+        /*var connStringStorage = storageAccountKeys.Apply(key => 
+            $"DefaultEndpointsProtocol=https;AccountName={storageAccount.Name};AccountKey={key};EndpointSuffix=core.windows.net"
+        );*/
         
         // url for website code in blob
         var blobUrl = Output.Tuple(storageAccount.Name, codeContainer.Name, codeBlob.Name, keySAS).Apply(values => {
@@ -140,16 +145,21 @@ class AzureFunctionToVM
                     },
                     new NameValuePairArgs
                     {
+                        Name = "FUNCTIONS_EXTENSION_VERSION",
+                        Value = "~4"
+                    },
+                    new NameValuePairArgs
+                    {
                         Name = "WEBSITE_RUN_FROM_PACKAGE",
                         Value = blobUrl
                     }
                 },
-                /*Cors = new CorsSettingsArgs {
+                Cors = new CorsSettingsArgs {
                     AllowedOrigins = new[]
                     {
-                        "*",
+                        "https://portal.azure.com",
                     },
-                }*/
+                }
             },
             
             HttpsOnly = true

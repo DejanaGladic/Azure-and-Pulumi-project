@@ -1,5 +1,6 @@
 {
-    "scriptFile": "SimpleHttpFunction.cs",  
+    "scriptFile": "../bin/Release/net6.0/AzureFunLogic.dll",
+    "entryPoint": "AzureFunLogic.SimpleHttpFunction.Run",  
     "bindings": [
       {
         "authLevel": "anonymous",  
