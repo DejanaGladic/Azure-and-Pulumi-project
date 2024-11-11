@@ -6,28 +6,16 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
-namespace AzureFunLogic
+namespace HttpTrigger
 {
-    public static class SimpleHttpFunction
+    public static class HttpTrigger
     {
-        [FunctionName("SimpleHttpFunction")]
+        [FunctionName("HttpTrigger")]
         public static async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req,
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "HttpTrigger")] HttpRequest req,
             ILogger log)
         {
             try{
-                var res = req.HttpContext.Response;
-
-                res.Headers.Append("Access-Control-Allow-Origin", "*");
-                res.Headers.Append("Access-Control-Allow-Methods", "GET");
-
-                if (HttpMethods.IsOptions(req.Method)) {
-
-                    return new NoContentResult();
-
-                }
-
-                res.Headers.Append("Content-Type", "application/json");
                 log.LogInformation("C# HTTP trigger function processed a request.");
 
                 return new OkObjectResult("Dejana has created AzureFunction!");

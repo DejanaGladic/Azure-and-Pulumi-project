@@ -1,7 +1,7 @@
 {
     "version": "2.0",
-    "functions": ["SimpleHttpFunction"],
-    "functionTimeout": "00:10:00",
+    "scriptFile": "../bin/Release/net6.0/HttpTrigger.dll",
+    "entryPoint": "HttpTrigger.HttpTrigger.Run",
     "logging": {
         "applicationInsights": {
             "samplingSettings": {
@@ -9,11 +9,6 @@
                 "excludedTypes": "Request"
             },
             "enableLiveMetricsFilters": true
-        },
-        "logLevel": {
-            "Function": "Information",
-            "Host": "Information",
-            "Default": "Information"
         }
     }
 }

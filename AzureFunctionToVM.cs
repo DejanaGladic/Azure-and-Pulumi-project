@@ -64,7 +64,7 @@ class AzureFunctionToVM
             ResourceGroupName = functionResourceGroup.Name,
             AccountName = storageAccount.Name,
             ContainerName = codeContainer.Name,
-            Source = new FileArchive("./AzureFunLogic")
+            Source = new FileArchive("./HttpTrigger")
         });
 
 
@@ -169,7 +169,7 @@ class AzureFunctionToVM
         this.functionEndpoint = app.DefaultHostName.Apply(hostname =>
         {
             var output = ImmutableDictionary<string, object?>.Empty
-                        .Add("apiURL", $"https://{hostname}/api/SimpleHttpFunction")
+                        .Add("apiURL", $"https://{hostname}/api/HttpTrigger")
                         .Add("siteURL",storageAccount.PrimaryEndpoints.Apply(primaryEndpoints => primaryEndpoints.Web))
                         .Add("blob url", blobUrl);
             return Output.Create(output);

@@ -1,17 +1,18 @@
 {
-    "scriptFile": "../bin/Release/net6.0/AzureFunLogic.dll",
-    "entryPoint": "AzureFunLogic.SimpleHttpFunction.Run",  
+    "scriptFile": "../bin/Release/net6.0/publish/bin/HttpTrigger.dll",
+    "entryPoint": "HttpTrigger.HttpTrigger.Run",
     "bindings": [
       {
         "authLevel": "anonymous",  
         "type": "httpTrigger",    
         "direction": "in",        
         "methods": ["get"],  
-        "route": "SimpleHttpFunction" 
+        "route": "HttpTrigger" 
       },
       {
         "type": "http",       
-        "direction": "out"
+        "direction": "out",
+        "name": "$return"
       }
     ]
   }
