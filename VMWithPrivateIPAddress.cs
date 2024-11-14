@@ -50,18 +50,6 @@ class VMWithPrivateIPAddress
             }
         );
 
-        // Create a public IP address for the VM and VNIC - separate from subnet - just for initial project
-        // going to be used in VNIC
-        // has to be removed later
-        var publicIp = new PublicIPAddress(
-            $"VM-Public-Ip-{suffix}",
-            new()
-            {
-                ResourceGroupName = VMResourceGroup.Name,
-                PublicIPAllocationMethod = IPAllocationMethod.Dynamic,
-            }
-        );
-
         // Create a NSG (Network Security Group) with a rule for SSH access (to run a VM)
         var networkSecurityGroup = new NetworkSecurityGroup($"VM-Security-Rule-Group-{suffix}", new()
         {
@@ -138,12 +126,6 @@ class VMWithPrivateIPAddress
                     {
                         Name = $"VM-ipconfig1-{suffix}",
                         // optionally!!!!! - no instance level public IP but public IP assigned to vNIC which is connected to VM (not the same)
-                        PublicIPAddress = new NetworkInputs.PublicIPAddressArgs
-                        {
-                            // dynamically assigned public IP address for access the VM from Internet - needs to be changed
-                            Id = publicIp.Id!
-
-                        },
                         Subnet = new NetworkInputs.SubnetArgs
                         {
                             // define subnet id in which VNIC exists - subnet was created up in the code
@@ -224,19 +206,6 @@ class VMWithPrivateIPAddress
             }
         });
 
-        // Custom Script Extension has been removed
-
-        // Once the machine is created, fetch its IP address
-        // for public ip only
-        var vmAddress = vm.Id.Apply(addr =>
-        {
-            return GetPublicIPAddress.Invoke(new()
-            {
-                ResourceGroupName = VMResourceGroup.Name,
-                PublicIpAddressName = publicIp.Name,
-            });
-        });
-
         // Create an SSH private key for VM
         var sshKey = new Tls.PrivateKey("ssh-key", new()
         {
@@ -244,15 +213,9 @@ class VMWithPrivateIPAddress
             RsaBits = 4096,
         });
 
-        // Export the public IP address and private key for SSH connection
-        // only for public IP
-        this.outputValues =  vmAddress.Apply(addr => {
-            var output = ImmutableDictionary<string, object?>.Empty
-                        .Add("ip", addr.IpAddress)
-                        .Add("privatekey", sshKey.PrivateKeyOpenssh);
-            return Output.Create(output);
-        });
+        // export private ssh key, and private ip address will be known after deployment
+        this.PrivateSshKey = sshKey.PrivateKeyOpenssh;
     }
 
-    public Output<ImmutableDictionary<string, object?>> outputValues {get; set;}
+    public Output<string> PrivateSshKey {get; set;}
 }
