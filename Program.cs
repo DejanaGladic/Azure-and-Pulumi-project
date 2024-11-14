@@ -14,14 +14,18 @@ class AzureStack : Stack
 
         // Register the outputs
         //this.OutputValues = vmResource.outputValues!;
-        this.FunctionEndpoint = functionResource.functionEndpoint!;
+        //this.FunctionEndpoint = functionResource.functionEndpoint!;
+        this.WebAppName = functionResource.WebAppName;
     }
 
     //[Output]
     //public Output<ImmutableDictionary<string, object?>> OutputValues { get; set; }
 
+    //[Output]
+    //public Output<ImmutableDictionary<string, object?>> FunctionEndpoint { get; set; }
+
     [Output]
-    public Output<ImmutableDictionary<string, object?>> FunctionEndpoint { get; set; }
+    public Output<string> WebAppName { get; set; }
 }
 
 class Program

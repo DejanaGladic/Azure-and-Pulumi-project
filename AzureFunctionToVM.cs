@@ -10,12 +10,9 @@ using System.Collections.Immutable;
 using Azure.Storage.Sas;
 using Azure.Storage;
 using System;
-using System.IO;
-
 
 class AzureFunctionToVM
 {
-    // pogledaj sad onaj kod i uporedi sa svojim mozda ne treba sve nemam pojma...
     public AzureFunctionToVM()
     {
         // to make a unique names - can be deleted but ok
@@ -49,14 +46,14 @@ class AzureFunctionToVM
             Kind = Kind.StorageV2,  // Recommended kind for Azure Functions
         });
 
+        // Blob container for zip project folder did not work but i will leave it commented for future works
+
         // create a container in which you will put AzureFunLogic folder as a Zip in Azure
-        var codeContainer = new BlobContainer("zips", new BlobContainerArgs
+        /*var codeContainer = new BlobContainer("zips", new BlobContainerArgs
         {
             ResourceGroupName = functionResourceGroup.Name,
             AccountName = storageAccount.Name
         });
-
-        // Compile the the app. - ne moram jer cu vec zip kod da stavim u storage account
 
         // put a AzureFunLogic folder in previously created container
         var codeBlob = new Blob("zip", new BlobArgs
@@ -66,21 +63,6 @@ class AzureFunctionToVM
             ContainerName = codeContainer.Name,
             Source = new FileArchive("./HttpTrigger")
         });
-
-
-        // appService --> consumption plan 
-        var appServicePlan = new AppServicePlan($"Consumption-Plan-{suffix_fun}", new()
-        {
-            ResourceGroupName = functionResourceGroup.Name,
-            Location = regionFun,
-            Kind = "FunctionApp",  // Specify that this is for Function Apps
-            Sku = new SkuDescriptionArgs
-            {
-                Name = "Y1",        // Size for the Consumption Plan
-                Tier = "Dynamic", //consumption plan for azure function
-            },
-        });
-
 
         // Retrieve storage account keys for connection - storage account is an output and some features will be known after deploy, so we use Apply and async
         var storageAccountKeys = Output.Tuple(functionResourceGroup.Name, storageAccount.Name).Apply(async names =>
@@ -99,10 +81,6 @@ class AzureFunctionToVM
         var connStringStorage = Output.Tuple(keySAS, storageAccName).Apply(values => {
             return $"DefaultEndpointsProtocol=https;AccountName={values.Item2};AccountKey={values.Item1};EndpointSuffix=core.windows.net";
         });
-         // Conection string for storage
-        /*var connStringStorage = storageAccountKeys.Apply(key => 
-            $"DefaultEndpointsProtocol=https;AccountName={storageAccount.Name};AccountKey={key};EndpointSuffix=core.windows.net"
-        );*/
         
         // url for website code in blob
         var blobUrl = Output.Tuple(storageAccount.Name, codeContainer.Name, codeBlob.Name, keySAS).Apply(values => {
@@ -119,6 +97,19 @@ class AzureFunctionToVM
                             sasToken.SetPermissions(BlobSasPermissions.Read);                     
                             var token = sasToken.ToSasQueryParameters(new StorageSharedKeyCredential(accountName, key));
                             return $"https://{accountName}.blob.core.windows.net/{containerName}/{blobName}?{token}";
+        });*/
+
+        // appService --> consumption plan 
+        var appServicePlan = new AppServicePlan($"Consumption-Plan-{suffix_fun}", new()
+        {
+            ResourceGroupName = functionResourceGroup.Name,
+            Location = regionFun,
+            Kind = "FunctionApp",  // Specify that this is for Function Apps
+            Sku = new SkuDescriptionArgs
+            {
+                Name = "Y1",        // Size for the Consumption Plan
+                Tier = "Dynamic", //consumption plan for azure function
+            },
         });
 
         // Web app is used as function app when the plan is consumption plan
@@ -132,12 +123,18 @@ class AzureFunctionToVM
                 DetailedErrorLoggingEnabled = true,
                 HttpLoggingEnabled = true,
                 AppSettings = {
+                    /* for blob storage too
                     new NameValuePairArgs
                     {
                         // connection to azure storage
                         Name = "AzureWebJobsStorage",
                         Value = connStringStorage
-                    },
+                    },*/
+                  /*new NameValuePairArgs
+                    {
+                        Name = "WEBSITE_RUN_FROM_PACKAGE",
+                        Value = blobUrl
+                    }*/
                     new NameValuePairArgs
                     {
                         Name = "FUNCTIONS_WORKER_RUNTIME",
@@ -148,11 +145,7 @@ class AzureFunctionToVM
                         Name = "FUNCTIONS_EXTENSION_VERSION",
                         Value = "~4"
                     },
-                    new NameValuePairArgs
-                    {
-                        Name = "WEBSITE_RUN_FROM_PACKAGE",
-                        Value = blobUrl
-                    }
+
                 },
                 Cors = new CorsSettingsArgs {
                     AllowedOrigins = new[]
@@ -165,17 +158,19 @@ class AzureFunctionToVM
             HttpsOnly = true
         });
 
-        // Export the Function App endpoint - mora apply zbog cekanja na vrednost
-        this.functionEndpoint = app.DefaultHostName.Apply(hostname =>
+        // Export the Function App endpoint - mora apply zbog cekanja na vrednost - for storage container version
+        /*this.functionEndpoint = app.DefaultHostName.Apply(hostname =>
         {
             var output = ImmutableDictionary<string, object?>.Empty
                         .Add("apiURL", $"https://{hostname}/api/HttpTrigger")
                         .Add("siteURL",storageAccount.PrimaryEndpoints.Apply(primaryEndpoints => primaryEndpoints.Web))
                         .Add("blob url", blobUrl);
             return Output.Create(output);
-        });
+        });*/
+        this.WebAppName = app.Name;
 
     }
 
-    public Output<ImmutableDictionary<string, object?>> functionEndpoint { get; set; }
+    //public Output<ImmutableDictionary<string, object?>> functionEndpoint { get; set; }
+    public Output<string> WebAppName { get; set; }
 }
