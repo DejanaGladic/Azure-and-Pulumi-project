@@ -8,6 +8,7 @@ using ComputeInputs = Pulumi.AzureNative.Compute.Inputs;
 using System.Collections.Immutable;
 using Tls = Pulumi.Tls;
 using Pulumi.Random;
+using System;
 
 class VMWithPrivateIPAddress
 {
@@ -140,6 +141,9 @@ class VMWithPrivateIPAddress
             }
         );
 
+        var customScript = "#!/bin/bash\n" +
+                           "echo 'Dejana and VM'";
+
         // Public key from my PC
         var publicKey = File.ReadAllText("/Users/user/.ssh/my_azure_key.pub");
         // Create a VM
@@ -165,6 +169,7 @@ class VMWithPrivateIPAddress
                 ComputerName = vmName, // set the name for VM
                 AdminUsername = adminUsername,
                 AdminPassword = adminPassword,
+                CustomData = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(customScript)), // Custom data must be base64 encoded
                 LinuxConfiguration = new ComputeInputs.LinuxConfigurationArgs {
                     DisablePasswordAuthentication = true,
                     Ssh = new ComputeInputs.SshConfigurationArgs {
