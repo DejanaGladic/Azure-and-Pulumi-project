@@ -5,14 +5,12 @@ using Pulumi.AzureNative.Resources;
 using Pulumi.AzureNative.Compute;
 using NetworkInputs = Pulumi.AzureNative.Network.Inputs;
 using ComputeInputs = Pulumi.AzureNative.Compute.Inputs;
-using System.Collections.Immutable;
 using Tls = Pulumi.Tls;
 using Pulumi.Random;
-using System;
 
 class VMWithPrivateIPAddress
 {
-    public VMWithPrivateIPAddress()
+    public VMWithPrivateIPAddress(VirtualNetwork vNet)
     {
         // to make a unique names  - can be deleted but ok
         var suffix = new RandomString("sufix", new RandomStringArgs
@@ -30,18 +28,6 @@ class VMWithPrivateIPAddress
         var adminUsername = config.Get("adminUsername")!;
         var adminPassword = config.RequireSecret("password")!; // value will be encrypted and dont be visible and exposed
 
-        // Create an Azure Resource Groups
-        // ResourceGroup() need name and args fo RG config
-        // we can access RG name as resourceGroup.Name
-        // resource group for networking
-        var networkResourceGroup = new ResourceGroup(
-            $"Network-Resource-Group-{suffix}",
-            new ResourceGroupArgs
-            {
-                Location = region
-            }
-        );
-
         // resource group for VM and its parts
         var VMResourceGroup = new ResourceGroup(
             $"VM-Resource-Group-{suffix}",
@@ -51,67 +37,12 @@ class VMWithPrivateIPAddress
             }
         );
 
-        // Create a NSG (Network Security Group) with a rule for SSH access (to run a VM)
-        var networkSecurityGroup = new NetworkSecurityGroup($"VM-Security-Rule-Group-{suffix}", new()
-        {
-            ResourceGroupName = networkResourceGroup.Name,
-            Location = region,
-            // beside the default rules, we can define our own rules
-            SecurityRules = new[]
-            {        
-                // Create a security group allowing inbound access over ports 22 for SSH!! to be able to connect tpo VM
-                new NetworkInputs.SecurityRuleArgs {
-                    Name = $"VM-Security-Rule-1--{suffix}",
-                    Priority = 1000, // The lower the priority number, the higher the priority of the rule; must be unique for every rule; from 100 to 4096
-                    Direction = SecurityRuleDirection.Inbound, // rule is for inbound (incoming) traffic
-                    Access = "Allow", // network traffic is allowed
-                    Protocol = "Tcp", // rule is applied only on Tcp protocols - SSH use this protocol
-                    // it is not recommended to set * because of security but okay for now
-                    SourcePortRange = "*", // * means all source ports
-                    SourceAddressPrefix = "*", // * means all source Ip addresses
-                    DestinationAddressPrefix = "*",
-                    DestinationPortRanges = new[] // this is port from my VM for SSH traffic
-                    {
-                        "22"
-                    } // This Security Rule 1 means that all TCP traffic from all source ports and all source IP addresses 
-                      // are allowed to all destination IP addresses, but only to the ports specified in DestinationPortRanges (e.g., port 22)
-                }
-            }
+        //Subnet 1 id
+        var subnet1Id = vNet.Subnets.GetAt(0).Apply(subnet => subnet.Id!);
+        subnet1Id.Apply(id => {
+            Log.Info(id);
+            return id;
         });
-
-        // Create a virtual network - VNet
-        // VirtualNetwork() use VNet name and args
-        var virtualNetwork = new VirtualNetwork(
-            $"VM-Virtual-Network-{suffix}",
-            new VirtualNetworkArgs()
-            {
-                ResourceGroupName = networkResourceGroup.Name,
-                Location = region,
-                // contains an array of IP address ranges that can be used by subnets
-                AddressSpace = new NetworkInputs.AddressSpaceArgs
-                {
-                    // use CIDR notation - baseIPaddress/subnetMask
-                    // just private IP addresses within the VNet
-                    AddressPrefixes = new[] { "10.0.0.0/16" },
-                },
-                Subnets = new[]
-                {
-                    // NetworkInputs class has to be specified because we have SubnetArgs() in different classes
-                    new NetworkInputs.SubnetArgs
-                    {
-                        Name = $"VMVirtualNetwork-subnet-1-{suffix}",
-                        // first subnet has a address range from 10.0.0.0 to 10.0.0.254 (excluded)
-                        AddressPrefix = "10.0.0.0/24", 
-                        // Make an association NSG with Subnet
-                        // Association NSG with NIC has been deleted because NSG on NIC can be hard to manage
-                        NetworkSecurityGroup = new NetworkInputs.NetworkSecurityGroupArgs
-                        {
-                            Id = networkSecurityGroup.Id
-                        }
-                    }
-                }
-            }
-        );
 
         // Create VNIC (Virtual Network Interface Card)
         var networkInterface = new NetworkInterface(
@@ -131,18 +62,19 @@ class VMWithPrivateIPAddress
                         {
                             // define subnet id in which VNIC exists - subnet was created up in the code
                             // get ID dinamically in code
-                            Id = virtualNetwork.Subnets.GetAt(0).Apply(subnet => subnet.Id!),
+                            Id = subnet1Id!,
                         },
-                        // dynamically assigned public IP address for access the VM from the same VNet - for secure communication inside the VNet
-                        // choose from subnet range (defined above)
-                        PrivateIPAllocationMethod = IPAllocationMethod.Dynamic,
+                        // staticaly assigned public IP address for access the VM from the same VNet to stabile connection 
+                        PrivateIPAllocationMethod = IPAllocationMethod.Static,
+                        PrivateIPAddress = "10.0.0.100"
                     }
                 }
             }
         );
 
-        var customScript = "#!/bin/bash\n" +
-                           "echo 'Dejana and VM'";
+        /*var customScript = "#!/bin/bash\n" +
+                           "echo 'Dejana and VM'";*/
+
 
         // Public key from my PC
         var publicKey = File.ReadAllText("/Users/user/.ssh/my_azure_key.pub");
@@ -169,10 +101,12 @@ class VMWithPrivateIPAddress
                 ComputerName = vmName, // set the name for VM
                 AdminUsername = adminUsername,
                 AdminPassword = adminPassword,
-                CustomData = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(customScript)), // Custom data must be base64 encoded
-                LinuxConfiguration = new ComputeInputs.LinuxConfigurationArgs {
+                //CustomData = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(customScript)), // Custom data must be base64 encoded
+                LinuxConfiguration = new ComputeInputs.LinuxConfigurationArgs
+                {
                     DisablePasswordAuthentication = true,
-                    Ssh = new ComputeInputs.SshConfigurationArgs {
+                    Ssh = new ComputeInputs.SshConfigurationArgs
+                    {
                         PublicKeys = new[]
                         {
                             // get public key from my PC and sets it in this path on linux VM
@@ -218,9 +152,20 @@ class VMWithPrivateIPAddress
             RsaBits = 4096,
         });
 
-        // export private ssh key, and private ip address will be known after deployment
+        // export private ssh key
         this.PrivateSshKey = sshKey.PrivateKeyOpenssh;
+        // export private ip address
+        /*this.PrivateIpAddress = networkInterface.IpConfigurations.Apply(ipConfigs =>
+        {
+            if (ipConfigs != null && ipConfigs.Count() > 0) {
+                // Access the first IP configuration and return the private IP address
+                return ipConfigs[0].PrivateIPAddress;
+            }
+
+        })!;*/
+        this.PrivateIpAddress = Output.Create("10.0.0.100");
     }
 
-    public Output<string> PrivateSshKey {get; set;}
+    public Output<string> PrivateSshKey { get; set; }
+    public Output<string> PrivateIpAddress { get; set; }
 }
